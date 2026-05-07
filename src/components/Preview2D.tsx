@@ -533,15 +533,17 @@ export function Preview2D({
 
     // ── Orientation gizmo (bottom-right) ───────────────────────────────────
     {
-      const GX = W - 40, GY = H - 40, GL = 17;
+      // GR = circle radius; GL = axis arm length (must be < GR so labels stay inside)
+      const GR = 20, GL = 11;
+      const GX = W - GR - 8, GY = H - GR - 8;
 
-      // Frosted pill background
+      // Frosted circle background
       ctx.save();
       ctx.beginPath();
-      ctx.arc(GX, GY, GL + 8, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(247,245,240,0.88)';
+      ctx.arc(GX, GY, GR, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(247,245,240,0.90)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(140,135,125,0.28)';
+      ctx.strokeStyle = 'rgba(140,135,125,0.30)';
       ctx.lineWidth = 0.75;
       ctx.stroke();
 
@@ -565,7 +567,7 @@ export function Preview2D({
         const ex = GX + px2, ey = GY + py2;
 
         ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.8;
         ctx.lineCap = 'round';
         ctx.globalAlpha = 0.88;
         ctx.beginPath();
@@ -576,13 +578,13 @@ export function Preview2D({
         // Arrowhead dot
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.arc(ex, ey, 2.5, 0, Math.PI * 2);
+        ctx.arc(ex, ey, 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Label just past the arrow tip
-        const [lx2, ly2] = project(wx * GL * 1.65, wy * GL * 1.65, wz * GL * 1.65, azimuth, elevation);
+        // Label — placed at GL * 1.45 so it stays within GR
+        const [lx2, ly2] = project(wx * GL * 1.45, wy * GL * 1.45, wz * GL * 1.45, azimuth, elevation);
         ctx.globalAlpha = 0.92;
-        ctx.font = 'bold 7.5px GSCode, monospace';
+        ctx.font = 'bold 7px GSCode, monospace';
         ctx.fillStyle = color;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
