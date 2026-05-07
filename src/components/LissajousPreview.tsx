@@ -35,22 +35,17 @@ export function LissajousPreview({ params }: Props) {
   const autoFit = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Small delay so the layout has settled before reading rect
-    setTimeout(() => {
-      const rect = canvas.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
-      const { lissAmpN, lissAmpT } = params;
-      const maxAmp = Math.max(lissAmpN, lissAmpT, 0.5);
-      const margin = 16;
-      const scale = Math.min(
-        (rect.width  - margin * 2) / (maxAmp * 2 || 1),
-        (rect.height - margin * 2) / (maxAmp * 2 || 1),
-        60,
-      );
-      // Offset Y slightly upward (40 % instead of 50 %) so figure sits
-      // comfortably in the short bottom-row canvas.
-      setPz({ offsetX: rect.width / 2, offsetY: rect.height * 0.44, scale });
-    }, 30);
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const { lissAmpN, lissAmpT } = params;
+    const maxAmp = Math.max(lissAmpN, lissAmpT, 0.5);
+    const margin = 16;
+    const scale = Math.min(
+      (rect.width  - margin * 2) / (maxAmp * 2 || 1),
+      (rect.height - margin * 2) / (maxAmp * 2 || 1),
+      60,
+    );
+    setPz({ offsetX: rect.width / 2, offsetY: rect.height * 0.44, scale });
   }, [params.lissAmpN, params.lissAmpT]);
 
   // Auto-ajuste inicial y cuando cambian amplitudes
@@ -207,8 +202,16 @@ export function LissajousPreview({ params }: Props) {
     ctx.restore();
   }, [params, pz]);
 
-  // Loop de animación
+  // Loop de animación — only run when there is something to animate
+  const { lissAmpN, lissAmpT } = params;
+  const hasContent = lissAmpN > 0.01 || lissAmpT > 0.01;
+
   useEffect(() => {
+    if (!hasContent) {
+      // Static: draw once and stop — no wasted 60 fps work on startup
+      draw();
+      return;
+    }
     let last = performance.now();
     function tick(now: number) {
       timeRef.current += now - last;
@@ -218,7 +221,7 @@ export function LissajousPreview({ params }: Props) {
     }
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [draw]);
+  }, [draw, hasContent]);
 
   // Pan
   const onMouseDown = (e: React.MouseEvent) => {

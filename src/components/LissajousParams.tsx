@@ -72,7 +72,7 @@ function Sec({ title, children, accentColor }: {
 
 const TWO_PI = Math.PI * 2;
 
-function LissajousMini({
+const LissajousMini = React.memo(function LissajousMini({
   ampN, ampT, wlN, wlT, delta, color = 'currentColor',
 }: {
   ampN: number; ampT: number; wlN: number; wlT: number; delta: number; color?: string;
@@ -123,7 +123,7 @@ function LissajousMini({
       <path d={d} stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-}
+});
 
 // ── Preajustes ──────────────────────────────────────────────────────────────
 

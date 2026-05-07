@@ -9,7 +9,8 @@ function createWindow() {
     minHeight: 600,
     icon: path.join(__dirname, '..', 'public', 'favicon.ico'),
     title: 'CurvaBarro',
-    backgroundColor: '#EDEBE4',   // matches --bg so no white flash on load
+    backgroundColor: '#EDEBE4',
+    show: false,   // paint before showing — eliminates white-flash on startup
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -18,6 +19,9 @@ function createWindow() {
 
   win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
   win.setMenuBarVisibility(false);
+
+  // Show only once React has painted — no blank window flicker
+  win.once('ready-to-show', () => win.show());
 
   // Open external links in the default browser, not Electron
   win.webContents.setWindowOpenHandler(({ url }) => {
