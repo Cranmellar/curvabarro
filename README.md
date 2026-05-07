@@ -1,10 +1,25 @@
 # CurvaBarro
 
-Herramienta web local para convertir curvas SVG en trayectorias oscilantes para impresión 3D en arcilla, exportadas como G-code.
-
-Diseñada para ceramistas, artistas y educadores que trabajan con extrusoras de arcilla controladas por máquina CNC o impresora 3D.
+Herramienta web para convertir curvas (.svg) en trayectorias oscilantes (.gcode) para el modelado por deposición líquida. Diseñada para quienes trabajan con extrusoras de arcilla y máquinas CNC.
 
 ---
+
+## Pendientes
+```
+Slider de coordenadas para ubicar un eje z en el espacio de trabajo para que funcione como centro, y que dentro de los paramametros del keyframe pueda escalar esa curva en particular, como para hacer gradaciones de escala, en relación a las trayectorias. Este slider es  vertical, en el mismo estilo que todo lo demás, se ubica en una columna de ancho 1/5 del tercio de panel inferior. Se posiciona a en el centro, entre la visualización de lissajous y el visualizador del gcode.
+
+Make a zhop-like movement a bit before, during, and after the line intersects itself or another line at each layer height, so as not to interrupt the flow of clay when printing.
+
+In the trayectory vis, make the line stroke subtly adjust according to the zoom level on the panel. Also, make their color a bit more saturated and a bit lighter. It looks too dull currently.
+
+(v2) Que un plano normal a cada vector de la dirección actual en la trayectori sea el lugar donde se evalua y desplaza el punto cada lissajous, para generar una trayectoria helicoidal y no plana entre capas; así se suaviza el transito entre capas.
+
+COlores: keyframes individually colored according to ther location along the trayectory, reflecting the visualization marker color at that point.
+
+eje n y eje t tienen dos colores en los acentos, pero esos no tienen relación con la visualización de lissajou, deberías estilizar los paneles de ejes igual que el de acoplamiento de fase. También, en esa letra negra que se usa para todos los valores numéricos; bajarle un poco lo oscuro; si ahora está en un value 10, dame un value 9.  
+
+Make "Drop svg box" smaller. Logo 50% biggger 
+```
 
 ## Inicio rápido
 

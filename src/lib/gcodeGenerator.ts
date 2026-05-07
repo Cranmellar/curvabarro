@@ -74,10 +74,7 @@ function toMM(
   params: PrintParams,
   svgH: number,
 ): MMPoint {
-  return svgToMM(
-    pt, params.scaleFactor, params.originX, params.originY, params.flipY, svgH,
-    params.centerX, params.centerY, params.scaleX, params.scaleY,
-  );
+  return svgToMM(pt, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
 }
 
 // ── Soft transition between layers ──────────────────────────────────────────

@@ -78,6 +78,11 @@ export interface WaveKeyframe {
   wlN: number;      // mm
   wlT: number;      // mm
   delta: number;    // radians
+  // Scale pivot — optional; falls back to global PrintParams values when absent
+  centerX?: number; // mm
+  centerY?: number; // mm
+  scaleX?:  number; // multiplier
+  scaleY?:  number; // multiplier
 }
 
 // ── Parameters ──────────────────────────────────────────────────────────────

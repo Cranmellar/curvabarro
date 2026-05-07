@@ -701,7 +701,7 @@ input[type="range"].t-range::-moz-range-thumb  { background: var(--t-axis); }
 .kf-add-btn:hover { background: var(--ok) !important; border-color: var(--ok) !important; color: white !important; }
 .kf-del-btn { color: var(--err); border-color: var(--err); font-size: 10px; }
 .kf-del-btn:hover { background: var(--err) !important; border-color: var(--err) !important; color: white !important; }
-.kf-trash-btn { display: flex; align-items: center; justify-content: center; padding: 3px 7px; }
+.kf-trash-btn { display: flex; align-items: center; justify-content: center; }
 
 /* ── Keyframe editor panel ───────────────────────────────────────────────── */
 .kf-editor {

@@ -145,7 +145,7 @@ export default function App() {
   // Regenerate wave + G-code on any param/path change
   useEffect(() => {
     if (!parsedSVG) return;
-    const newLayers = generateWaveLayers(parsedSVG.paths, params, keyframes);
+    const newLayers = generateWaveLayers(parsedSVG.paths, params, keyframes, parsedSVG.viewBox.height);
     setLayers(newLayers);
     if (newLayers.length > 0) {
       setGcode(generateGcode(newLayers, params, parsedSVG.viewBox));

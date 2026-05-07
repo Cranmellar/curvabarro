@@ -16,6 +16,7 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import type { SampledPath, WaveLayer, PrintParams, SVGViewBox, WaveKeyframe } from '../types';
 import { svgToMM } from '../lib/waveGenerator';
 import { buildArcPath, findCrossings, hopAtArc } from '../lib/hopUtils';
+import { getParamsAtT } from '../lib/waveGenerator';
 import { NumInput } from './NumInput';
 
 interface Props {
@@ -57,14 +58,14 @@ function project(x: number, y: number, z: number, az: number, el: number): [numb
 interface FlatPoint { x: number; y: number; z: number; layerIndex: number }
 
 function toMM(p: { x: number; y: number }, params: PrintParams, svgH: number) {
-  return svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH,
-    params.centerX, params.centerY, params.scaleX, params.scaleY);
+  return svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
 }
 
 function flattenPoints(layers: WaveLayer[], params: PrintParams, svgH: number): FlatPoint[] {
   const pts: FlatPoint[] = [];
   for (const layer of layers) {
-    // Build full mm path to compute arc lengths + z-hop crossings
+    // Scale is already baked into wave points by generateWaveLayers.
+    // We only need arc lengths for z-hop.
     const allMm = layer.paths.flatMap(path => path.map(p => toMM(p, params, svgH)));
     const arcPath = buildArcPath(allMm);
     const crossings = params.zHopHeight > 0 ? findCrossings(arcPath) : [];
@@ -197,13 +198,42 @@ export function Preview2D({
       ctx.restore();
     }
 
+    // Center axis — dashed vertical line through the scale pivot
+    if (numLayers > 0) {
+      // Use the interpolated center at the current timeline position
+      const lp = getParamsAtT(timelineProgress, keyframes, params);
+      const cxMM = lp.centerX, cyMM = lp.centerY;
+      const maxZ = layers[numLayers - 1].z + params.layerHeight;
+      const [cx0, cy0] = toScreen(cxMM, cyMM, 0);
+      const [cx1, cy1] = toScreen(cxMM, cyMM, maxZ);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(16,14,9,0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.moveTo(cx0, cy0); ctx.lineTo(cx1, cy1); ctx.stroke();
+      // Base crosshair
+      ctx.setLineDash([]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx0 - 6, cy0); ctx.lineTo(cx0 + 6, cy0);
+      ctx.moveTo(cx0, cy0 - 6); ctx.lineTo(cx0, cy0 + 6);
+      ctx.stroke();
+      // Label
+      ctx.font = '700 8px GSCode, monospace';
+      ctx.fillStyle = 'rgba(16,14,9,0.45)';
+      ctx.textAlign = 'left';
+      ctx.fillText(`C (${cxMM.toFixed(1)}, ${cyMM.toFixed(1)})`, cx0 + 8, cy0 - 4);
+      ctx.restore();
+    }
+
     // Layer paths — vivid strokes with z-hop applied
     for (let li = 0; li < numLayers; li++) {
       const layer = layers[li];
       const alpha = 0.60 + (li / Math.max(1, numLayers - 1)) * 0.40;
 
-      // Pre-compute mm points + z-hop for this layer
-      const allMm = layer.paths.flatMap(svgPts => svgPts.map(p => toMM(p, params, svgH)));
+      // Pre-compute mm points + z-hop for this layer (scale pre-applied in wave data)
+      const allMm = layer.paths.flatMap(svgPts =>
+        svgPts.map(p => svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH)));
       const arcPath = buildArcPath(allMm);
       const crossings = params.zHopHeight > 0 ? findCrossings(arcPath) : [];
 
@@ -244,8 +274,8 @@ export function Preview2D({
         if (!a?.length || !b?.length) continue;
         const lastA  = a[a.length - 1];
         const firstB = b[0];
-        const mmA = toMM(lastA,  params, svgH);
-        const mmB = toMM(firstB, params, svgH);
+        const mmA = svgToMM(lastA,  params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
+        const mmB = svgToMM(firstB, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
         ctx.strokeStyle = layerColor(li, numLayers, 0.7);
         ctx.beginPath();
         const [ax, ay] = toScreen(mmA.x, mmA.y, layer.z);
@@ -323,7 +353,7 @@ export function Preview2D({
         if (!path.enabled || path.points.length < 2) continue;
         ctx.beginPath();
         path.points.forEach((p, i) => {
-          const mm = toMM({ x: p.x, y: p.y }, params, svgH);
+          const mm = svgToMM({ x: p.x, y: p.y }, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
           const [sx, sy] = toScreen(mm.x, mm.y, 0);
           if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
         });
@@ -470,13 +500,17 @@ export function Preview2D({
 
   function addKeyframe() {
     const newKf: WaveKeyframe = {
-      id:    uid(),
-      t:     timelineProgress,
-      ampN:  params.lissAmpN,
-      ampT:  params.lissAmpT,
-      wlN:   params.lissWlN,
-      wlT:   params.lissWlT,
-      delta: params.lissDelta,
+      id:      uid(),
+      t:       timelineProgress,
+      ampN:    params.lissAmpN,
+      ampT:    params.lissAmpT,
+      wlN:     params.lissWlN,
+      wlT:     params.lissWlT,
+      delta:   params.lissDelta,
+      centerX: params.centerX,
+      centerY: params.centerY,
+      scaleX:  params.scaleX,
+      scaleY:  params.scaleY,
     };
     const updated = [...keyframes, newKf].sort((a, b) => a.t - b.t);
     onKeyframesChange(updated);
@@ -619,6 +653,28 @@ export function Preview2D({
               onChange={v => updateKf('delta', v * Math.PI / 180)}
             />
             <span className="kf-unit">°</span>
+          </div>
+          <div className="kf-field">
+            <label>Centro X</label>
+            <NumInput value={selectedKf.centerX ?? params.centerX} min={-500} max={500} step={1}
+              onChange={v => updateKf('centerX', v)} />
+            <span className="kf-unit">mm</span>
+          </div>
+          <div className="kf-field">
+            <label>Centro Y</label>
+            <NumInput value={selectedKf.centerY ?? params.centerY} min={-500} max={500} step={1}
+              onChange={v => updateKf('centerY', v)} />
+            <span className="kf-unit">mm</span>
+          </div>
+          <div className="kf-field">
+            <label>Escala X</label>
+            <NumInput value={selectedKf.scaleX ?? params.scaleX} min={0.05} max={5} step={0.01}
+              onChange={v => updateKf('scaleX', v)} />
+          </div>
+          <div className="kf-field">
+            <label>Escala Y</label>
+            <NumInput value={selectedKf.scaleY ?? params.scaleY} min={0.05} max={5} step={0.01}
+              onChange={v => updateKf('scaleY', v)} />
           </div>
         </div>
       )}

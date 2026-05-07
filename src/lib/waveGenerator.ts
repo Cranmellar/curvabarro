@@ -11,8 +11,9 @@
  *   offset_T   = ampT * sin( 2π·s / wlT              +  phase_base )
  *   point      = centerline(s) + N(s)·offset_N + T(s)·offset_T
  *
- * If keyframes are provided, ampN/ampT/wlN/wlT/delta are interpolated along
- * the flattened trajectory (t ∈ [0,1] across all layers).
+ * If keyframes are provided, ampN/ampT/wlN/wlT/delta/centerX/Y/scaleX/Y are
+ * interpolated along the flattened trajectory (t ∈ [0,1] across all layers).
+ * Scale is applied per-point in SVG space around the interpolated center.
  */
 
 import type {
@@ -23,39 +24,46 @@ const TWO_PI = 2 * Math.PI;
 
 // ── Local params struct ─────────────────────────────────────────────────────
 
-interface LocalParams {
+export interface LocalParams {
   ampN: number; ampT: number;
   wlN: number;  wlT: number;
   delta: number;
+  centerX: number; centerY: number;  // mm
+  scaleX:  number; scaleY:  number;  // multipliers
 }
 
 // ── Keyframe interpolation ──────────────────────────────────────────────────
 
-function getParamsAtT(
+export function getParamsAtT(
   t: number,
   keyframes: WaveKeyframe[],
   base: PrintParams,
 ): LocalParams {
-  if (keyframes.length === 0) {
-    return {
-      ampN: base.lissAmpN, ampT: base.lissAmpT,
-      wlN:  base.lissWlN,  wlT:  base.lissWlT,
-      delta: base.lissDelta,
-    };
-  }
+  const baseFull: LocalParams = {
+    ampN: base.lissAmpN, ampT: base.lissAmpT,
+    wlN:  base.lissWlN,  wlT:  base.lissWlT,
+    delta: base.lissDelta,
+    centerX: base.centerX, centerY: base.centerY,
+    scaleX:  base.scaleX,  scaleY:  base.scaleY,
+  };
+
+  if (keyframes.length === 0) return baseFull;
 
   const sorted = [...keyframes].sort((a, b) => a.t - b.t);
 
-  if (t <= sorted[0].t) {
-    const k = sorted[0];
-    return { ampN: k.ampN, ampT: k.ampT, wlN: k.wlN, wlT: k.wlT, delta: k.delta };
-  }
-  if (t >= sorted[sorted.length - 1].t) {
-    const k = sorted[sorted.length - 1];
-    return { ampN: k.ampN, ampT: k.ampT, wlN: k.wlN, wlT: k.wlT, delta: k.delta };
+  function kfFull(k: WaveKeyframe): LocalParams {
+    return {
+      ampN: k.ampN, ampT: k.ampT, wlN: k.wlN, wlT: k.wlT, delta: k.delta,
+      centerX: k.centerX ?? base.centerX,
+      centerY: k.centerY ?? base.centerY,
+      scaleX:  k.scaleX  ?? base.scaleX,
+      scaleY:  k.scaleY  ?? base.scaleY,
+    };
   }
 
-  // Find bracket
+  if (t <= sorted[0].t) return kfFull(sorted[0]);
+  if (t >= sorted[sorted.length - 1].t) return kfFull(sorted[sorted.length - 1]);
+
   let lo = sorted[0], hi = sorted[1];
   for (let i = 0; i < sorted.length - 1; i++) {
     if (sorted[i].t <= t && t <= sorted[i + 1].t) {
@@ -65,13 +73,18 @@ function getParamsAtT(
 
   const alpha = (hi.t - lo.t) > 0 ? (t - lo.t) / (hi.t - lo.t) : 0;
   const lerp  = (a: number, b: number) => a + (b - a) * alpha;
+  const loF = kfFull(lo), hiF = kfFull(hi);
 
   return {
-    ampN:  lerp(lo.ampN,  hi.ampN),
-    ampT:  lerp(lo.ampT,  hi.ampT),
-    wlN:   Math.max(0.1, lerp(lo.wlN,  hi.wlN)),
-    wlT:   Math.max(0.1, lerp(lo.wlT,  hi.wlT)),
-    delta: lerp(lo.delta, hi.delta),
+    ampN:    lerp(loF.ampN,    hiF.ampN),
+    ampT:    lerp(loF.ampT,    hiF.ampT),
+    wlN:     Math.max(0.1, lerp(loF.wlN,  hiF.wlN)),
+    wlT:     Math.max(0.1, lerp(loF.wlT,  hiF.wlT)),
+    delta:   lerp(loF.delta,   hiF.delta),
+    centerX: lerp(loF.centerX, hiF.centerX),
+    centerY: lerp(loF.centerY, hiF.centerY),
+    scaleX:  lerp(loF.scaleX,  hiF.scaleX),
+    scaleY:  lerp(loF.scaleY,  hiF.scaleY),
   };
 }
 
@@ -92,8 +105,42 @@ function lissajousPoint(
   const oN = ampN * Math.sin(phaseN);
   const oT = ampT * Math.sin(phaseT);
   return {
-    x: p.x + p.normalX  * oN + p.tangentX * oT,
-    y: p.y + p.normalY  * oN + p.tangentY * oT,
+    x: p.x + p.normalX * oN + p.tangentX * oT,
+    y: p.y + p.normalY * oN + p.tangentY * oT,
+  };
+}
+
+// ── Scale-around-center in SVG space ────────────────────────────────────────
+//
+// The center is given in mm; we convert to SVG units then apply the scale.
+// This correctly round-trips through svgToMM(pt, sf, ox, oy, flipY, svgH).
+//
+//   svgCX = (centerX_mm - originX) / sf
+//   svgCY = flipY ? (svgH - (centerY_mm - originY) / sf) : (centerY_mm - originY) / sf
+//
+// Proof: applying scaleX around svgCX and then svgToMM gives
+//   x_out_mm = centerX_mm + (x_in_mm - centerX_mm) * scaleX   ✓
+
+function applyScaleSVG(
+  pt: WavePoint,
+  centerX: number,   // mm
+  centerY: number,   // mm
+  scaleX: number,
+  scaleY: number,
+  sf: number,        // scaleFactor
+  originX: number,
+  originY: number,
+  flipY: boolean,
+  svgH: number,
+): WavePoint {
+  if (scaleX === 1 && scaleY === 1) return pt;
+  const cxSVG = (centerX - originX) / sf;
+  const cySVG = flipY
+    ? svgH - (centerY - originY) / sf
+    : (centerY - originY) / sf;
+  return {
+    x: cxSVG + (pt.x - cxSVG) * scaleX,
+    y: cySVG + (pt.y - cySVG) * scaleY,
   };
 }
 
@@ -103,6 +150,7 @@ export function generateWaveLayers(
   sampledPaths: SampledPath[],
   params: PrintParams,
   keyframes: WaveKeyframe[] = [],
+  svgHeight = 0,  // required when scaleX/Y may differ from 1
 ): WaveLayer[] {
   const enabled = sampledPaths.filter(p => p.enabled);
   if (enabled.length === 0) return [];
@@ -113,8 +161,6 @@ export function generateWaveLayers(
 
   const sf = params.scaleFactor > 0 ? params.scaleFactor : 1;
 
-  // Pre-count total flat points for keyframe t-mapping.
-  // Each path contributes its point count; closePath adds one extra if needed.
   let totalFlatPoints = 0;
   for (let li = 0; li < numLayers; li++) {
     for (const path of enabled) {
@@ -145,30 +191,36 @@ export function generateWaveLayers(
 
         let lp: LocalParams;
         if (useKeyframes) {
-          const t = flatIdx / tDenom;
-          lp = getParamsAtT(t, keyframes, params);
+          lp = getParamsAtT(flatIdx / tDenom, keyframes, params);
         } else {
-          // Per-path overrides fall back to global values.
           lp = {
             ampN: (path.ampNOverride ?? params.lissAmpN) / sf,
             ampT: (path.ampTOverride ?? params.lissAmpT) / sf,
             wlN:  (path.wlNOverride  ?? params.lissWlN)  / sf,
             wlT:  (path.wlTOverride  ?? params.lissWlT)  / sf,
             delta: params.lissDelta,
+            centerX: params.centerX, centerY: params.centerY,
+            scaleX:  params.scaleX,  scaleY:  params.scaleY,
           };
         }
         flatIdx++;
 
-        // When keyframes active, divide by sf to convert mm → SVG units
         const aN = useKeyframes ? lp.ampN / sf : lp.ampN;
         const aT = useKeyframes ? lp.ampT / sf : lp.ampT;
         const wN = useKeyframes ? lp.wlN  / sf : lp.wlN;
         const wT = useKeyframes ? lp.wlT  / sf : lp.wlT;
 
-        return lissajousPoint(adjusted, aN, aT, wN, wT, lp.delta, phaseBase);
+        const wavePt = lissajousPoint(adjusted, aN, aT, wN, wT, lp.delta, phaseBase);
+
+        // Apply per-point scale around center (in SVG space)
+        return applyScaleSVG(
+          wavePt,
+          lp.centerX, lp.centerY,
+          lp.scaleX,  lp.scaleY,
+          sf, params.originX, params.originY, params.flipY, svgHeight,
+        );
       });
 
-      // Optionally close path.
       if (params.closePath && result.length > 1) {
         const a = result[0], b = result[result.length - 1];
         if (Math.hypot(a.x - b.x, a.y - b.y) > 0.001) {
@@ -187,6 +239,8 @@ export function generateWaveLayers(
 }
 
 // ── Coordinate conversion ────────────────────────────────────────────────────
+// Scale-around-center is now handled inside generateWaveLayers, so svgToMM
+// is a pure SVG→mm projection: scaleFactor, origin offset, optional Y-flip.
 
 export function svgToMM(
   pt: WavePoint,
@@ -195,19 +249,11 @@ export function svgToMM(
   originY: number,
   flipY: boolean,
   svgHeight: number,
-  centerX = 0,
-  centerY = 0,
-  scaleX  = 1,
-  scaleY  = 1,
 ): { x: number; y: number } {
-  let x = pt.x * scaleFactor + originX;
-  let y = flipY
+  const x = pt.x * scaleFactor + originX;
+  const y = flipY
     ? (svgHeight - pt.y) * scaleFactor + originY
     : pt.y * scaleFactor + originY;
-  if (scaleX !== 1 || scaleY !== 1) {
-    x = centerX + (x - centerX) * scaleX;
-    y = centerY + (y - centerY) * scaleY;
-  }
   return { x, y };
 }
 
