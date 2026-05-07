@@ -53,7 +53,7 @@ export function PathList({ paths, params, onToggle, onOverride }: Props) {
               <span className="path-len">{path.totalLength.toFixed(1)} u</span>
             </div>
 
-            {path.enabled && !isCollapsed && (
+            {!isCollapsed && (
               <div className="path-overrides">
                 {([
                   { key: 'ampNOverride' as const, label: 'Amp N', unit: 'mm', ph: params.lissAmpN },
