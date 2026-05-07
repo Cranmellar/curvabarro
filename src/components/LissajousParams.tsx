@@ -13,7 +13,9 @@ function Slider({ label, value, min, max, step, unit, hint, cls, valCls, onChang
   step: number; unit?: string; hint?: string; cls?: string; valCls?: string;
   onChange: (v: number) => void;
 }) {
-  const display = Math.abs(value) < 10 ? value.toFixed(2) : value.toFixed(1);
+  const display  = Math.abs(value) < 10 ? value.toFixed(2) : value.toFixed(1);
+  const fillPct  = ((value - min) / (max - min)) * 100;
+  const trackBg  = `linear-gradient(to right,var(--accent) 0%,var(--accent) ${fillPct}%,var(--border) ${fillPct}%,var(--border) 100%)`;
   return (
     <div className="slider-row" title={hint}>
       <div className="slider-header">
@@ -25,6 +27,7 @@ function Slider({ label, value, min, max, step, unit, hint, cls, valCls, onChang
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         className={cls ?? ''}
+        style={{ background: trackBg }}
         onChange={e => onChange(parseFloat(e.target.value))} />
     </div>
   );
