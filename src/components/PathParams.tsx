@@ -122,6 +122,10 @@ export function PathParams({ params, onChange }: Props) {
         <Num label="Vel. desplazamiento" value={params.travelSpeed}
           min={1} step={100} unit="mm/min"
           onChange={v => set('travelSpeed', v)} />
+        <Num label="Umbral arco desvío" value={params.skirtThreshold}
+          min={1} max={200} step={1} unit="mm"
+          hint="Desplazamientos más largos que este valor siguen un arco concéntrico alrededor del centroide de la capa en lugar de ir en línea recta"
+          onChange={v => set('skirtThreshold', v)} />
       </Sec>
 
       <Sec title="Opciones de trayecto">

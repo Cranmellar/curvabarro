@@ -17,6 +17,7 @@ import type { SampledPath, WaveLayer, PrintParams, SVGViewBox, WaveKeyframe } fr
 import { svgToMM } from '../lib/waveGenerator';
 import { buildArcPath, findCrossings, hopAtArc } from '../lib/hopUtils';
 import { getParamsAtT } from '../lib/waveGenerator';
+import { computeCentroid, skirtArcPoints } from '../lib/skirtUtils';
 import { NumInput } from './NumInput';
 
 interface Props {
@@ -258,6 +259,83 @@ export function Preview2D({
         ctx.stroke();
       }
       ctx.restore();
+    }
+
+    // Concentric skirt travel arcs (when softJoin is OFF)
+    if (!params.softJoin && numLayers > 0) {
+      for (let li = 0; li < numLayers; li++) {
+        const layer = layers[li];
+
+        // Convert all paths for this layer to mm-space
+        const mmPaths = layer.paths.map(path =>
+          path.map(p => toMM(p, params, svgH)),
+        );
+        const flatMm = mmPaths.flat();
+        if (flatMm.length === 0) continue;
+        const centroid = computeCentroid(flatMm);
+
+        ctx.save();
+        ctx.setLineDash([3, 6]);
+        ctx.lineWidth = 1.1;
+        ctx.globalAlpha = 0.38;
+        ctx.strokeStyle = 'rgba(70, 58, 40, 0.85)';
+
+        // Within-layer: between consecutive paths
+        for (let pi = 0; pi < mmPaths.length - 1; pi++) {
+          const fromPath = mmPaths[pi];
+          const toPath   = mmPaths[pi + 1];
+          if (!fromPath.length || !toPath.length) continue;
+
+          const from = fromPath[fromPath.length - 1];
+          const to   = toPath[0];
+          const arcPts = skirtArcPoints(from, to, centroid, params.skirtThreshold);
+
+          ctx.beginPath();
+          const [fx, fy] = toScreen(from.x, from.y, layer.z);
+          ctx.moveTo(fx, fy);
+
+          if (arcPts) {
+            for (const pt of arcPts) {
+              const [sx, sy] = toScreen(pt.x, pt.y, layer.z);
+              ctx.lineTo(sx, sy);
+            }
+          } else {
+            const [tx, ty] = toScreen(to.x, to.y, layer.z);
+            ctx.lineTo(tx, ty);
+          }
+          ctx.stroke();
+        }
+
+        // Between-layer: from last path end of layer li → first path start of layer li+1
+        if (li < numLayers - 1) {
+          const nextLayer = layers[li + 1];
+          const nextMmPaths = nextLayer.paths.map(path => path.map(p => toMM(p, params, svgH)));
+          const lastCurPath = mmPaths[mmPaths.length - 1];
+          const firstNextPath = nextMmPaths[0];
+          if (lastCurPath?.length && firstNextPath?.length) {
+            const from = lastCurPath[lastCurPath.length - 1];
+            const to   = firstNextPath[0];
+            const arcPts = skirtArcPoints(from, to, centroid, params.skirtThreshold);
+
+            ctx.beginPath();
+            const [fx, fy] = toScreen(from.x, from.y, layer.z);
+            ctx.moveTo(fx, fy);
+
+            if (arcPts) {
+              for (const pt of arcPts) {
+                const [sx, sy] = toScreen(pt.x, pt.y, nextLayer.z);
+                ctx.lineTo(sx, sy);
+              }
+            } else {
+              const [tx, ty] = toScreen(to.x, to.y, nextLayer.z);
+              ctx.lineTo(tx, ty);
+            }
+            ctx.stroke();
+          }
+        }
+
+        ctx.restore();
+      }
     }
 
     // Inter-layer travel lines (dashed, visible)

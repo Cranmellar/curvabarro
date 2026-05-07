@@ -51,6 +51,8 @@ const DEFAULT_PARAMS: PrintParams = {
   scaleUniform: true,
   // Z-hop
   zHopHeight: 0,
+  // Concentric skirt travel
+  skirtThreshold: 15,
 };
 
 // ── Resizable panel hook ────────────────────────────────────────────────────

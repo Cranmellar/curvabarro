@@ -20,7 +20,8 @@
 
 import type { WaveLayer, WavePoint, PrintParams, SVGViewBox } from '../types';
 import { svgToMM } from './waveGenerator';
-import { buildArcPath, findCrossings, hopAtArc, HOP_RADIUS } from './hopUtils';
+import { buildArcPath, findCrossings, hopAtArc } from './hopUtils';
+import { computeCentroid, skirtArcPoints, type MM2 } from './skirtUtils';
 
 function fmt(n: number, d = 3) { return n.toFixed(d); }
 
@@ -56,6 +57,7 @@ function buildHeader(params: PrintParams, numLayers: number): string {
     `; Origin X / Y           : ${params.originX} / ${params.originY} mm`,
     `; Flip Y                 : ${params.flipY}`,
     `; Z-hop height           : ${params.zHopHeight} mm`,
+    `; Skirt threshold        : ${params.skirtThreshold} mm`,
     `; Print speed            : ${params.printSpeed} mm/min`,
     `; Travel speed           : ${params.travelSpeed} mm/min`,
     `; Generate E             : ${params.generateE}`,
@@ -115,15 +117,58 @@ function buildTransition(
   return lines;
 }
 
+// ── Concentric skirt travel ──────────────────────────────────────────────────
+
+/**
+ * G-code lines for a concentric skirt arc from `from` → `to`.
+ * Short hops (< skirtThreshold) fall back to a direct lift-travel-descend.
+ * Longer hops orbit the layer centroid at radius max(rFrom, rTo).
+ */
+function buildSkirtTravel(
+  from: MM2,
+  to: MM2,
+  centroid: MM2,
+  z: number,
+  params: PrintParams,
+): string[] {
+  const arcPts = skirtArcPoints(from, to, centroid, params.skirtThreshold);
+
+  const lines: string[] = [];
+  lines.push(`G1 Z${fmt(params.safeZ)} F${params.travelSpeed}  ; lift`);
+
+  if (!arcPts) {
+    // Short hop — direct XY travel
+    lines.push(`G1 X${fmt(to.x)} Y${fmt(to.y)} F${params.travelSpeed}  ; short hop`);
+  } else {
+    const rA = Math.hypot(from.x - centroid.x, from.y - centroid.y);
+    const rB = Math.hypot(to.x   - centroid.x, to.y   - centroid.y);
+    const R  = Math.max(rA, rB, 1);
+    const arcLen = R * Math.abs(Math.atan2(
+      (to.y - centroid.y) * (from.x - centroid.x) - (to.x - centroid.x) * (from.y - centroid.y),
+      (to.x - centroid.x) * (from.x - centroid.x) + (to.y - centroid.y) * (from.y - centroid.y),
+    ));
+    lines.push(`; ↻ Skirt arc r=${fmt(R, 1)} mm ~${fmt(arcLen, 1)} mm`);
+    for (const pt of arcPts) {
+      lines.push(`G1 X${fmt(pt.x)} Y${fmt(pt.y)} F${params.travelSpeed}`);
+    }
+  }
+
+  lines.push(`G1 Z${fmt(z)} F${params.travelSpeed}  ; descend`);
+  return lines;
+}
+
 // ── Single path on one layer ─────────────────────────────────────────────────
 
+/**
+ * Emit G-code for one continuous print path.
+ * Travel to the path start must be handled by the caller BEFORE this call.
+ */
 function pathToGcode(
   svgPts: WavePoint[],
   z: number,
   params: PrintParams,
   svgH: number,
   eRef: { value: number },
-  travelToStart: boolean,
   crossings: number[],    // arc positions (mm) of intersections in the full layer path
   arcOffset: number,      // cumulative arc at start of this path segment
 ): string[] {
@@ -131,12 +176,6 @@ function pathToGcode(
 
   const mmPts = svgPts.map(p => toMM(p, params, svgH));
   const lines: string[] = [];
-
-  if (travelToStart) {
-    const s = mmPts[0];
-    lines.push(`G1 X${fmt(s.x)} Y${fmt(s.y)} F${params.travelSpeed}  ; travel to path start`);
-    lines.push(`G1 Z${fmt(z)} F${params.travelSpeed}  ; descend`);
-  }
 
   // Build arc-length accumulator for this path (local arc + offset = global arc)
   let localArc = arcOffset;
@@ -245,14 +284,16 @@ export function generateGcode(
 
     const orderedPaths = reorderPaths(layer.paths, curX, curY, params, svgH);
 
+    // ── Layer centroid for concentric skirt travel ─────────────────────────
+    const allLayerMm: MMPoint[] = orderedPaths.flatMap(
+      path => path.map(p => toMM(p, params, svgH)),
+    );
+    const layerCentroid = computeCentroid(allLayerMm);
+
     // ── Z-hop pre-processing: build full layer arc path & find crossings ──
     let layerCrossings: number[] = [];
     if (params.zHopHeight > 0) {
-      const fullMmPts: MMPoint[] = [];
-      for (const svgPts of orderedPaths) {
-        for (const p of svgPts) fullMmPts.push(toMM(p, params, svgH));
-      }
-      const arcPath = buildArcPath(fullMmPts);
+      const arcPath = buildArcPath(allLayerMm);
       layerCrossings = findCrossings(arcPath);
       if (layerCrossings.length > 0) {
         blocks.push(`; Z-hop: ${layerCrossings.length} crossing(s) detected`);
@@ -268,12 +309,22 @@ export function generateGcode(
 
       blocks.push(`; --- Layer ${li + 1}, Path ${pi + 1} ---`);
 
-      const needsTravel = isFirstMove || !params.softJoin;
-      if (!isFirstMove && !params.softJoin) {
-        blocks.push(`G1 Z${fmt(params.safeZ)} F${params.travelSpeed}  ; safe lift`);
-      }
+      const destMM = toMM(svgPts[0], params, svgH);
 
-      const lines = pathToGcode(svgPts, layer.z, params, svgH, eRef, needsTravel, layerCrossings, arcOffset);
+      if (isFirstMove) {
+        // Very first move: direct travel to start position
+        blocks.push(`G1 X${fmt(destMM.x)} Y${fmt(destMM.y)} F${params.travelSpeed}  ; travel to start`);
+        blocks.push(`G1 Z${fmt(layer.z)} F${params.travelSpeed}  ; descend`);
+      } else if (!params.softJoin) {
+        // Inter-path travel: concentric skirt arc (or short hop if close)
+        const skirtLines = buildSkirtTravel(
+          { x: curX, y: curY }, destMM, layerCentroid, layer.z, params,
+        );
+        blocks.push(skirtLines.join('\n'));
+      }
+      // softJoin: continuous extrusion — no travel needed
+
+      const lines = pathToGcode(svgPts, layer.z, params, svgH, eRef, layerCrossings, arcOffset);
       blocks.push(lines.join('\n'));
       isFirstMove = false;
 
