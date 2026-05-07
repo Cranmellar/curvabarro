@@ -114,7 +114,6 @@ html, body, #root { height: 100%; overflow: hidden; }
 .app-banner {
   flex-shrink: 0;
   padding: 14px 16px 10px;
-  background: var(--ink);
   border-bottom: 2px solid var(--ink);
 }
 .app-banner img {
@@ -123,14 +122,13 @@ html, body, #root { height: 100%; overflow: hidden; }
   object-fit: contain;
   object-position: left center;
   display: block;
-  filter: invert(1);   /* black logo → white on dark banner */
 }
 .banner-sub {
   margin-top: 6px;
   font-size: 8px;
   font-weight: 700;
   font-variation-settings: 'wght' 700;
-  color: rgba(237,235,228,0.45);
+  color: var(--muted);
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
