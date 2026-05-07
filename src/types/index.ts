@@ -113,6 +113,16 @@ export interface PrintParams {
   originY: number;               // mm offset
   flipY: boolean;                // negate Y (SVG Y-down → printer Y-up)
 
+  // ── Scale around center (applied after svgToMM) ──
+  centerX: number;               // mm — pivot X for scaleX/scaleY
+  centerY: number;               // mm — pivot Y
+  scaleX: number;                // independent X scale (1 = no change)
+  scaleY: number;                // independent Y scale (1 = no change)
+  scaleUniform: boolean;         // UI lock: keep scaleX === scaleY
+
+  // ── Z-hop ──
+  zHopHeight: number;            // mm — nozzle lifts over path crossings (0 = off)
+
   // ── Speeds ──
   printSpeed: number;            // mm/min
   travelSpeed: number;           // mm/min

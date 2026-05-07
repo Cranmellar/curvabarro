@@ -11,6 +11,11 @@
  *   E is cumulative.  Each move of distance d:   E += d * extrusionMultiplier
  *   extrusionMultiplier ≈ 0.02–0.1 for clay systems (tune to pump/auger).
  *   Set generateE=false for motion-only G-code.
+ *
+ * Z-hop:
+ *   When zHopHeight > 0, the nozzle arcs smoothly over self-intersecting path
+ *   crossings (same layer). A parabolic lift of ±hopRadius mm around each
+ *   crossing provides clearance without stopping extrusion.
  */
 
 import type { WaveLayer, WavePoint, PrintParams, SVGViewBox } from '../types';
@@ -45,8 +50,11 @@ function buildHeader(params: PrintParams, numLayers: number): string {
     `; Nozzle Z offset        : ${params.nozzleHeightOffset} mm`,
     `; Soft join              : ${params.softJoin} (transition ${params.transitionLength} mm)`,
     `; Scale factor           : ${params.scaleFactor}`,
+    `; Center (X/Y)           : ${params.centerX} / ${params.centerY} mm`,
+    `; Scale X / Y            : ${params.scaleX} / ${params.scaleY}`,
     `; Origin X / Y           : ${params.originX} / ${params.originY} mm`,
     `; Flip Y                 : ${params.flipY}`,
+    `; Z-hop height           : ${params.zHopHeight} mm`,
     `; Print speed            : ${params.printSpeed} mm/min`,
     `; Travel speed           : ${params.travelSpeed} mm/min`,
     `; Generate E             : ${params.generateE}`,
@@ -65,7 +73,82 @@ function toMM(
   params: PrintParams,
   svgH: number,
 ): MMPoint {
-  return svgToMM(pt, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
+  return svgToMM(
+    pt, params.scaleFactor, params.originX, params.originY, params.flipY, svgH,
+    params.centerX, params.centerY, params.scaleX, params.scaleY,
+  );
+}
+
+// ── Z-hop intersection detection ─────────────────────────────────────────────
+
+const HOP_RADIUS = 5; // mm — arc distance on each side of crossing
+
+/**
+ * Segment AB × CD intersection test. Returns t ∈ (0,1) for AB if they cross,
+ * or null if parallel / touching only at endpoints.
+ */
+function segSegIntersect(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, dx: number, dy: number,
+): number | null {
+  const dxAB = bx - ax, dyAB = by - ay;
+  const dxCD = dx - cx, dyCD = dy - cy;
+  const denom = dxAB * dyCD - dyAB * dxCD;
+  if (Math.abs(denom) < 1e-10) return null;
+  const t = ((cx - ax) * dyCD - (cy - ay) * dxCD) / denom;
+  const s = ((cx - ax) * dyAB - (cy - ay) * dxAB) / denom;
+  if (t > 0.01 && t < 0.99 && s > 0.01 && s < 0.99) return t;
+  return null;
+}
+
+interface ArcPt { x: number; y: number; arc: number }
+
+/** Build cumulative arc-length path in mm. */
+function buildArcPath(mmPts: MMPoint[]): ArcPt[] {
+  const out: ArcPt[] = [];
+  let arc = 0;
+  for (let i = 0; i < mmPts.length; i++) {
+    if (i > 0) arc += dist(mmPts[i - 1].x, mmPts[i - 1].y, mmPts[i].x, mmPts[i].y);
+    out.push({ x: mmPts[i].x, y: mmPts[i].y, arc });
+  }
+  return out;
+}
+
+/**
+ * Find arc positions (mm) where the path crosses itself.
+ * Only checks non-adjacent segments to avoid false positives.
+ */
+function findCrossings(arcPath: ArcPt[]): number[] {
+  const crossings: number[] = [];
+  const n = arcPath.length;
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = i + 2; j < n - 1; j++) {
+      // Skip if segments share an endpoint
+      if (i === 0 && j === n - 2) continue;
+      const t = segSegIntersect(
+        arcPath[i].x, arcPath[i].y, arcPath[i + 1].x, arcPath[i + 1].y,
+        arcPath[j].x, arcPath[j].y, arcPath[j + 1].x, arcPath[j + 1].y,
+      );
+      if (t !== null) {
+        const crossArc = arcPath[i].arc + t * (arcPath[i + 1].arc - arcPath[i].arc);
+        crossings.push(crossArc);
+      }
+    }
+  }
+  return crossings;
+}
+
+/** Parabolic z-hop contribution at arc position `arc` given a list of crossings. */
+function hopAtArc(arc: number, crossings: number[], zHopHeight: number): number {
+  if (zHopHeight <= 0 || crossings.length === 0) return 0;
+  let hop = 0;
+  for (const crossArc of crossings) {
+    const d = Math.abs(arc - crossArc);
+    if (d < HOP_RADIUS) {
+      hop = Math.max(hop, zHopHeight * (1 - (d / HOP_RADIUS) ** 2));
+    }
+  }
+  return hop;
 }
 
 // ── Soft transition between layers ──────────────────────────────────────────
@@ -84,8 +167,6 @@ function buildTransition(
   params: PrintParams,
   eRef: { value: number },
 ): string[] {
-  const d = dist(from.x, from.y, to.x, to.y);
-  // Number of G-code segments proportional to transition length.
   const nSteps = Math.max(6, Math.ceil(transitionLength / 2));
   const lines: string[] = [
     `; ↗ Soft transition Z ${fmt(zFrom)} → ${fmt(zTo)} mm`,
@@ -97,7 +178,7 @@ function buildTransition(
     const st = smoothstep(t);
     const x = from.x + (to.x - from.x) * st;
     const y = from.y + (to.y - from.y) * st;
-    const z = zFrom + (zTo - zFrom) * t;  // linear Z rise
+    const z = zFrom + (zTo - zFrom) * t;
 
     const segD = dist(prevX, prevY, x, y);
     eRef.value += segD * params.extrusionMultiplier;
@@ -117,6 +198,8 @@ function pathToGcode(
   svgH: number,
   eRef: { value: number },
   travelToStart: boolean,
+  crossings: number[],    // arc positions (mm) of intersections in the full layer path
+  arcOffset: number,      // cumulative arc at start of this path segment
 ): string[] {
   if (svgPts.length < 2) return [];
 
@@ -129,15 +212,23 @@ function pathToGcode(
     lines.push(`G1 Z${fmt(z)} F${params.travelSpeed}  ; descend`);
   }
 
+  // Build arc-length accumulator for this path (local arc + offset = global arc)
+  let localArc = arcOffset;
+
   for (let i = 1; i < mmPts.length; i++) {
     const prev = mmPts[i - 1];
     const curr = mmPts[i];
     const d = dist(prev.x, prev.y, curr.x, curr.y);
     if (d < 1e-6) continue;
 
+    localArc += d;
+    const hop = hopAtArc(localArc, crossings, params.zHopHeight);
+    const zOut = z + hop;
+
     eRef.value += d * params.extrusionMultiplier;
     const eStr = params.generateE ? ` E${fmt(eRef.value)}` : '';
-    lines.push(`G1 X${fmt(curr.x)} Y${fmt(curr.y)}${eStr} F${params.printSpeed}`);
+    const zStr = (hop > 0.001 || i === 1) ? ` Z${fmt(zOut)}` : '';
+    lines.push(`G1 X${fmt(curr.x)} Y${fmt(curr.y)}${zStr}${eStr} F${params.printSpeed}`);
   }
 
   return lines;
@@ -145,11 +236,6 @@ function pathToGcode(
 
 // ── Nearest-neighbour path reordering ───────────────────────────────────────
 
-/**
- * Reorder paths within a layer using a nearest-neighbour greedy strategy.
- * Starting from (startX, startY), always picks the closest unvisited path start.
- * This minimises travel distance between paths in the same layer.
- */
 function reorderPaths(
   paths: WavePoint[][],
   startX: number,
@@ -159,7 +245,7 @@ function reorderPaths(
 ): WavePoint[][] {
   if (paths.length <= 1) return paths;
 
-  const remaining = paths.map((p, i) => i);
+  const remaining = paths.map((_, i) => i);
   const ordered: WavePoint[][] = [];
   let cx = startX, cy = startY;
 
@@ -199,14 +285,12 @@ export function generateGcode(
   const blocks: string[] = [];
   blocks.push(buildHeader(params, layers.length));
 
-  // Machine startup.
   blocks.push('G21       ; mm units\nG90       ; absolute positioning\nG92 E0    ; reset E\n');
   blocks.push(`G1 Z${fmt(params.safeZ)} F${params.travelSpeed}  ; safe Z\n`);
 
   const eRef = { value: 0 };
   let isFirstMove = true;
 
-  // Optional priming.
   if (params.primingMove) {
     const pz = layers[0].z;
     const px = params.originX - 5;
@@ -225,7 +309,6 @@ export function generateGcode(
     isFirstMove = false;
   }
 
-  // Current head position in mm — used to seed nearest-neighbour reordering.
   let curX = params.originX, curY = params.originY;
 
   for (let li = 0; li < layers.length; li++) {
@@ -234,8 +317,24 @@ export function generateGcode(
 
     blocks.push(`\n; ===== Layer ${li + 1} / ${layers.length}   Z = ${fmt(layer.z)} mm =====`);
 
-    // Nearest-neighbour: reorder paths to minimise intra-layer travel.
     const orderedPaths = reorderPaths(layer.paths, curX, curY, params, svgH);
+
+    // ── Z-hop pre-processing: build full layer arc path & find crossings ──
+    let layerCrossings: number[] = [];
+    if (params.zHopHeight > 0) {
+      const fullMmPts: MMPoint[] = [];
+      for (const svgPts of orderedPaths) {
+        for (const p of svgPts) fullMmPts.push(toMM(p, params, svgH));
+      }
+      const arcPath = buildArcPath(fullMmPts);
+      layerCrossings = findCrossings(arcPath);
+      if (layerCrossings.length > 0) {
+        blocks.push(`; Z-hop: ${layerCrossings.length} crossing(s) detected`);
+      }
+    }
+
+    // Track running arc offset so each path knows its global arc position
+    let arcOffset = 0;
 
     for (let pi = 0; pi < orderedPaths.length; pi++) {
       const svgPts = orderedPaths[pi];
@@ -243,26 +342,26 @@ export function generateGcode(
 
       blocks.push(`; --- Layer ${li + 1}, Path ${pi + 1} ---`);
 
-      // Travel to start only for the very first move (or when not soft-joining).
       const needsTravel = isFirstMove || !params.softJoin;
       if (!isFirstMove && !params.softJoin) {
         blocks.push(`G1 Z${fmt(params.safeZ)} F${params.travelSpeed}  ; safe lift`);
       }
 
-      const lines = pathToGcode(svgPts, layer.z, params, svgH, eRef, needsTravel);
+      const lines = pathToGcode(svgPts, layer.z, params, svgH, eRef, needsTravel, layerCrossings, arcOffset);
       blocks.push(lines.join('\n'));
       isFirstMove = false;
 
-      // Track head position after this path for the next reorderPaths call.
+      // Update arc offset for next path
+      const mmPts = svgPts.map(p => toMM(p, params, svgH));
+      for (let i = 1; i < mmPts.length; i++) {
+        arcOffset += dist(mmPts[i - 1].x, mmPts[i - 1].y, mmPts[i].x, mmPts[i].y);
+      }
+
       const lastPt = toMM(svgPts[svgPts.length - 1], params, svgH);
       curX = lastPt.x; curY = lastPt.y;
 
-      // After the last path of this layer, insert soft join to next layer.
       if (params.softJoin && nextLayer !== null && pi === orderedPaths.length - 1) {
-        // Target: first path of the next layer (next layer's own reordering will
-        // take over from the new curX/curY, so any stable target works here).
         const firstNextSvgPt = nextLayer.paths[0]?.[0];
-
         if (firstNextSvgPt) {
           const fromMM = toMM(svgPts[svgPts.length - 1], params, svgH);
           const toMM2 = toMM(firstNextSvgPt, params, svgH);

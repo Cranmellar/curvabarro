@@ -154,7 +154,7 @@ export function LissajousParams({ params, onChange, onReset }: Props) {
       </div>
 
       {/* ── Eje N ── */}
-      <Sec title="Eje N — Normal  (izq. / der.)" accentColor="var(--n-axis)">
+      <Sec title="Eje N — Normal  (izq. / der.)">
         <Slider label="Amplitud N" value={params.lissAmpN}
           min={0} max={30} step={0.1} unit="mm" cls="n-range" valCls="n-value"
           hint="Desplazamiento máximo a izquierda/derecha de la línea central"
@@ -166,7 +166,7 @@ export function LissajousParams({ params, onChange, onReset }: Props) {
       </Sec>
 
       {/* ── Eje T ── */}
-      <Sec title="Eje T — Tangente  (adelante / atrás)" accentColor="var(--t-axis)">
+      <Sec title="Eje T — Tangente  (adelante / atrás)">
         <Slider label="Amplitud T" value={params.lissAmpT}
           min={0} max={30} step={0.1} unit="mm" cls="t-range" valCls="t-value"
           hint="Desplazamiento máximo en la dirección de avance del trayecto"

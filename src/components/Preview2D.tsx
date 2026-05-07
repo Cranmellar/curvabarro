@@ -36,12 +36,12 @@ interface View3D {
   offsetY: number;
 }
 
-// Muted palette: slate-blue (bottom) → warm terracotta (top)
+// Vivid palette: slate-blue (bottom) → warm terracotta (top)
 function layerColor(index: number, total: number, alpha = 1): string {
   const t = total <= 1 ? 0 : index / (total - 1);
   const hue = Math.round(215 - 195 * t);   // 215 (slate) → 20 (terracotta)
-  const sat = 42 + t * 12;                  // 42 % → 54 %
-  const lit = 46 + t * 10;                  // 46 % → 56 %
+  const sat = 55 + t * 20;                  // 55 % → 75 %
+  const lit = 52 + t * 14;                  // 52 % → 66 %
   return `hsla(${hue},${sat.toFixed(0)}%,${lit.toFixed(0)}%,${alpha})`;
 }
 
@@ -60,7 +60,7 @@ function flattenPoints(layers: WaveLayer[], params: PrintParams, svgH: number): 
   for (const layer of layers) {
     for (const path of layer.paths) {
       for (const p of path) {
-        const mm = svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
+        const mm = svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH, params.centerX, params.centerY, params.scaleX, params.scaleY);
         pts.push({ x: mm.x, y: mm.y, z: layer.z, layerIndex: layer.index });
       }
     }
@@ -192,7 +192,7 @@ export function Preview2D({
       ctx.save();
       ctx.strokeStyle = layerColor(li, numLayers);
       ctx.globalAlpha = alpha;
-      ctx.lineWidth   = Math.max(1.6, 2.4 / Math.sqrt(Math.max(scale, 0.1)));
+      ctx.lineWidth   = Math.max(0.5, 2.0 / Math.sqrt(Math.max(scale, 0.05)));
       ctx.lineJoin    = 'round';
       ctx.lineCap     = 'round';
 
@@ -200,7 +200,7 @@ export function Preview2D({
         if (svgPts.length < 2) continue;
         ctx.beginPath();
         for (let i = 0; i < svgPts.length; i++) {
-          const mm = svgToMM(svgPts[i], params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
+          const mm = svgToMM(svgPts[i], params.scaleFactor, params.originX, params.originY, params.flipY, svgH, params.centerX, params.centerY, params.scaleX, params.scaleY);
           const [sx, sy] = toScreen(mm.x, mm.y, layer.z);
           if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
         }
@@ -223,8 +223,8 @@ export function Preview2D({
         if (!a?.length || !b?.length) continue;
         const lastA  = a[a.length - 1];
         const firstB = b[0];
-        const mmA = svgToMM(lastA,  params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
-        const mmB = svgToMM(firstB, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
+        const mmA = svgToMM(lastA,  params.scaleFactor, params.originX, params.originY, params.flipY, svgH, params.centerX, params.centerY, params.scaleX, params.scaleY);
+        const mmB = svgToMM(firstB, params.scaleFactor, params.originX, params.originY, params.flipY, svgH, params.centerX, params.centerY, params.scaleX, params.scaleY);
         ctx.strokeStyle = layerColor(li, numLayers, 0.7);
         ctx.beginPath();
         const [ax, ay] = toScreen(mmA.x, mmA.y, layer.z);
@@ -245,7 +245,7 @@ export function Preview2D({
         ctx.save();
         ctx.beginPath();
         ctx.arc(kx, ky, isSelected ? 7 : 5, 0, Math.PI * 2);
-        ctx.fillStyle   = isSelected ? '#4F46E5' : '#C45B2A';
+        ctx.fillStyle   = isSelected ? '#6366F1' : layerColor(kfPt.layerIndex, numLayers);
         ctx.strokeStyle = '#fff';
         ctx.lineWidth   = 2;
         ctx.fill(); ctx.stroke();
@@ -293,7 +293,7 @@ export function Preview2D({
         if (!path.enabled || path.points.length < 2) continue;
         ctx.beginPath();
         path.points.forEach((p, i) => {
-          const mm = svgToMM({ x: p.x, y: p.y }, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
+          const mm = svgToMM({ x: p.x, y: p.y }, params.scaleFactor, params.originX, params.originY, params.flipY, svgH, params.centerX, params.centerY, params.scaleX, params.scaleY);
           const [sx, sy] = toScreen(mm.x, mm.y, 0);
           if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
         });
@@ -471,6 +471,7 @@ export function Preview2D({
     );
   }
 
+  const numLayers = layers.length;
   const totalPts = layers.reduce((s, l) => s + l.paths.reduce((a, p) => a + p.length, 0), 0);
 
   return (
@@ -510,15 +511,21 @@ export function Preview2D({
               value={timelineProgress}
               onChange={e => onTimelineChange(parseFloat(e.target.value))}
             />
-            {keyframes.map(kf => (
-              <div
-                key={kf.id}
-                className={`kf-diamond ${kf.id === selectedKfId ? 'kf-selected' : ''}`}
-                style={{ left: `${kf.t * 100}%` }}
-                onClick={() => setSelectedKfId(kf.id === selectedKfId ? null : kf.id)}
-                title={`Keyframe ${(kf.t * 100).toFixed(1)}%`}
-              />
-            ))}
+            {keyframes.map(kf => {
+              const kfLayerIdx = Math.round(kf.t * Math.max(0, numLayers - 1));
+              const kfColor = kf.id === selectedKfId
+                ? 'var(--accent)'
+                : layerColor(kfLayerIdx, numLayers);
+              return (
+                <div
+                  key={kf.id}
+                  className={`kf-diamond ${kf.id === selectedKfId ? 'kf-selected' : ''}`}
+                  style={{ left: `${kf.t * 100}%`, background: kfColor }}
+                  onClick={() => setSelectedKfId(kf.id === selectedKfId ? null : kf.id)}
+                  title={`Keyframe ${(kf.t * 100).toFixed(1)}%`}
+                />
+              );
+            })}
           </div>
 
           <span className="timeline-label" style={{ minWidth: 36, textAlign: 'right' }}>

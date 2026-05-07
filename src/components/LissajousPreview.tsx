@@ -135,9 +135,9 @@ export function LissajousPreview({ params }: Props) {
       ctx.lineCap     = 'round';
       for (let i = 1; i < pts.length; i++) {
         const frac  = i / pts.length;
-        const alpha = 0.08 + frac * 0.78;
+        const alpha = 0.06 + frac * 0.80;
         ctx.beginPath();
-        ctx.strokeStyle = `rgba(16,14,9,${alpha.toFixed(2)})`; // ink — instrument trace
+        ctx.strokeStyle = `rgba(79,70,229,${alpha.toFixed(2)})`; // accent fade — dim tail → vivid head
         const [x0, y0] = toCanvas(pts[i - 1].t, pts[i - 1].n);
         const [x1, y1] = toCanvas(pts[i].t,     pts[i].n);
         ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
@@ -163,7 +163,7 @@ export function LissajousPreview({ params }: Props) {
           ctx.beginPath();
           ctx.moveTo(dx, dy);
           ctx.lineTo(dx + (vx / vlen) * L, dy + (vy / vlen) * L);
-          ctx.strokeStyle = '#3730A3';
+          ctx.strokeStyle = '#4F46E5';
           ctx.lineWidth = 2;
           ctx.stroke();
         }
@@ -173,7 +173,7 @@ export function LissajousPreview({ params }: Props) {
       ctx.save();
       ctx.translate(dx, dy);
       ctx.rotate(Math.PI / 4);
-      ctx.fillStyle   = '#3730A3';
+      ctx.fillStyle   = '#4F46E5';
       ctx.strokeStyle = '#fff';
       ctx.lineWidth   = 2;
       ctx.beginPath();

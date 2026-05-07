@@ -195,11 +195,19 @@ export function svgToMM(
   originY: number,
   flipY: boolean,
   svgHeight: number,
+  centerX = 0,
+  centerY = 0,
+  scaleX  = 1,
+  scaleY  = 1,
 ): { x: number; y: number } {
-  const x = pt.x * scaleFactor + originX;
-  const y = flipY
+  let x = pt.x * scaleFactor + originX;
+  let y = flipY
     ? (svgHeight - pt.y) * scaleFactor + originY
     : pt.y * scaleFactor + originY;
+  if (scaleX !== 1 || scaleY !== 1) {
+    x = centerX + (x - centerX) * scaleX;
+    y = centerY + (y - centerY) * scaleY;
+  }
   return { x, y };
 }
 

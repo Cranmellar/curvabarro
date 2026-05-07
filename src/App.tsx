@@ -10,6 +10,7 @@ import { LissajousPreview } from './components/LissajousPreview';
 import { Preview2D } from './components/Preview2D';
 import { GcodeOutput } from './components/GcodeOutput';
 import { PathList } from './components/PathList';
+import { CenterScaleParams } from './components/CenterScaleParams';
 
 const DEFAULT_PARAMS: PrintParams = {
   sampleSpacing: 2,
@@ -42,6 +43,14 @@ const DEFAULT_PARAMS: PrintParams = {
   dwellAtStart: 0,
   primingMove: false,
   primingLength: 20,
+  // Center + scale around pivot
+  centerX: 0,
+  centerY: 0,
+  scaleX: 1,
+  scaleY: 1,
+  scaleUniform: true,
+  // Z-hop
+  zHopHeight: 0,
 };
 
 // ── Resizable panel hook ────────────────────────────────────────────────────
@@ -96,11 +105,12 @@ export default function App() {
   const lastRawRef = useRef<{ raw: string; spacing: number } | null>(null);
 
   // Resizable panels
-  const leftPanel   = useResize(272, 200, 480, 'x');
-  const rightPanel  = useResize(288, 200, 480, 'x', true);
+  const leftPanel        = useResize(272, 200, 480, 'x');
+  const rightPanel       = useResize(288, 200, 480, 'x', true);
   // Bottom row — taller default so Lissajous canvas has breathing room
-  const bottomRow   = useResize(280, 140, 520, 'y', true);
-  const bottomSplit = useResize(0, 0, 2000, 'x'); // 0 = 50/50 via flex
+  const bottomRow        = useResize(280, 140, 520, 'y', true);
+  const centerScalePanel = useResize(176, 140, 320, 'x');
+  const bottomSplit      = useResize(0, 0, 2000, 'x'); // 0 = 50/50 via flex
 
   const doParse = useCallback((raw: string, spacing: number) => {
     try {
@@ -266,10 +276,17 @@ export default function App() {
         {/* Divisor horizontal redimensionable */}
         <div className="drag-handle-h" onMouseDown={bottomRow.onMouseDown} />
 
-        {/* Fila inferior — Lissajous izquierda | G-code derecha */}
+        {/* Fila inferior — Centro/Escala | Lissajous | G-code */}
         <div className="bottom-row" style={{ height: bottomRow.size }}>
 
-          {/* Lissajous preview — izquierda */}
+          {/* Centro y escala — izquierda */}
+          <div className="center-scale-pane" style={{ width: centerScalePanel.size }}>
+            <CenterScaleParams params={params} onChange={setParams} />
+          </div>
+
+          <div className="drag-handle-v" onMouseDown={centerScalePanel.onMouseDown} />
+
+          {/* Lissajous preview — centro */}
           <div className="lissajous-pane" style={{ flex: 1 }}>
             <div className="lissajous-container">
               <LissajousPreview params={params} />

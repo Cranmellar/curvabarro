@@ -25,11 +25,11 @@
   --ink-2:       #3C3830;
   --muted:       #8C8780;
 
-  /* Single accent — restrained indigo */
-  --accent:      #3730A3;
-  --accent-hi:   #4F46E5;
-  --accent-lo:   #2922A0;
-  --accent-bg:   rgba(55,48,163,0.06);
+  /* Single accent — indigo (slightly lighter for legibility) */
+  --accent:      #4F46E5;
+  --accent-hi:   #6366F1;
+  --accent-lo:   #3730A3;
+  --accent-bg:   rgba(79,70,229,0.06);
 
   /* Axis colours — semantic only, not UI chrome */
   --n-axis:      #1D64B4;
@@ -118,7 +118,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 }
 .app-banner img {
   width: 100%;
-  max-height: 42px;
+  max-height: 63px;
   object-fit: contain;
   object-position: left center;
   display: block;
@@ -168,10 +168,10 @@ html, body, #root { height: 100%; overflow: hidden; }
   background: transparent;
 }
 .upload-area {
-  margin: 12px 12px 0;
+  margin: 10px 12px 0;
   border: 1.5px dashed var(--border-rule);
   border-radius: var(--radius);
-  padding: 18px 10px 14px;
+  padding: 10px 10px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -185,7 +185,7 @@ html, body, #root { height: 100%; overflow: hidden; }
   border-style: solid;
   background: var(--accent-bg);
 }
-.upload-icon  { font-size: 20px; opacity: 0.25; margin-bottom: 2px; }
+.upload-icon  { font-size: 16px; opacity: 0.25; margin-bottom: 1px; }
 .upload-label {
   font-size: 12px;
   font-weight: 700;
@@ -408,7 +408,7 @@ html, body, #root { height: 100%; overflow: hidden; }
   font-size: 19px;
   font-weight: 800;
   font-variation-settings: 'wght' 800;
-  color: var(--ink);
+  color: hsl(27, 28%, 9%);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -561,6 +561,22 @@ input[type="range"].t-range::-moz-range-thumb  { background: var(--t-axis); }
   border-top: 1px solid var(--border);
 }
 
+/* ── Center/scale pane ───────────────────────────────────────────────────── */
+.center-scale-pane {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-shrink: 0;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  min-width: 0;
+}
+.center-scale-pane::-webkit-scrollbar       { width: 3px; }
+.center-scale-pane::-webkit-scrollbar-thumb { background: var(--border); }
+
 /* ── Lissajous pane ──────────────────────────────────────────────────────── */
 .lissajous-pane {
   display: flex;
@@ -665,7 +681,7 @@ input[type="range"].t-range::-moz-range-thumb  { background: var(--t-axis); }
   position: absolute;
   width: 10px;
   height: 10px;
-  background: var(--t-axis);
+  background: var(--muted);
   border: 2px solid var(--card);
   border-radius: 2px;
   transform: translate(-50%, -50%) rotate(45deg);
