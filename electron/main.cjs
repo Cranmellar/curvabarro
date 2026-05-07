@@ -7,7 +7,7 @@ function createWindow() {
     height: 900,
     minWidth: 960,
     minHeight: 600,
-    icon: path.join(__dirname, '..', 'public', 'favicon.ico'),
+    icon: path.join(__dirname, '..', 'public', 'favicon.black.ico'),
     title: 'CurvaBarro',
     backgroundColor: '#EDEBE4',
     show: false,   // paint before showing — eliminates white-flash on startup
