@@ -19,6 +19,7 @@ import { buildArcPath, findCrossings, hopAtArc } from '../lib/hopUtils';
 import { getParamsAtT } from '../lib/waveGenerator';
 import { computeCentroid, skirtArcPoints } from '../lib/skirtUtils';
 import { NumInput } from './NumInput';
+import { CenterPad } from './CenterPad';
 
 interface Props {
   sampledPaths: SampledPath[];
@@ -259,6 +260,63 @@ export function Preview2D({
         ctx.stroke();
       }
       ctx.restore();
+    }
+
+    // Selected-keyframe layer highlight — overdraw in accent so the user
+    // knows which layer the open kf editor is targeting
+    if (selectedKfId && numLayers > 0) {
+      const selKf = keyframes.find(k => k.id === selectedKfId);
+      if (selKf) {
+        const editLi = Math.min(numLayers - 1,
+          Math.round(selKf.t * Math.max(0, numLayers - 1)));
+        const editLayer = layers[editLi];
+        const editAllMm = editLayer.paths.flatMap(svgPts =>
+          svgPts.map(p => svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH)));
+        const editArcPath = buildArcPath(editAllMm);
+        const editCrossings = params.zHopHeight > 0 ? findCrossings(editArcPath) : [];
+
+        ctx.save();
+        ctx.strokeStyle = '#4F46E5';
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth   = Math.max(2, 5.5 / Math.sqrt(Math.max(scale, 0.05)));
+        ctx.lineJoin    = 'round'; ctx.lineCap = 'round';
+        let editPtIdx = 0;
+        for (const svgPts of editLayer.paths) {
+          if (svgPts.length < 2) { editPtIdx += svgPts.length; continue; }
+          ctx.beginPath();
+          for (let i = 0; i < svgPts.length; i++) {
+            const { x, y, arc } = editArcPath[editPtIdx];
+            const hop = hopAtArc(arc, editCrossings, params.zHopHeight);
+            const [sx, sy] = toScreen(x, y, editLayer.z + hop);
+            if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+            editPtIdx++;
+          }
+          ctx.stroke();
+        }
+        // Horizontal band: bounding-box rectangle at the edited layer's Z
+        if (editAllMm.length > 0) {
+          const xs = editAllMm.map(p => p.x), ys = editAllMm.map(p => p.y);
+          const mnX = Math.min(...xs), mxX = Math.max(...xs);
+          const mnY = Math.min(...ys), mxY = Math.max(...ys);
+          const corners: [number,number,number][] = [
+            [mnX, mnY, editLayer.z], [mxX, mnY, editLayer.z],
+            [mxX, mxY, editLayer.z], [mnX, mxY, editLayer.z],
+          ];
+          ctx.save();
+          ctx.globalAlpha = 0.28;
+          ctx.strokeStyle = '#4F46E5';
+          ctx.lineWidth   = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          corners.forEach(([x, y, z], i) => {
+            const [sx, sy] = toScreen(x, y, z);
+            if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+          });
+          ctx.closePath(); ctx.stroke();
+          ctx.restore();
+        }
+        ctx.restore();
+      }
     }
 
     // Concentric skirt travel arcs (when softJoin is OFF)
@@ -732,17 +790,22 @@ export function Preview2D({
             />
             <span className="kf-unit">°</span>
           </div>
-          <div className="kf-field">
-            <label>Centro X</label>
-            <NumInput value={selectedKf.centerX ?? params.centerX} min={-500} max={500} step={1}
-              onChange={v => updateKf('centerX', v)} />
-            <span className="kf-unit">mm</span>
-          </div>
-          <div className="kf-field">
-            <label>Centro Y</label>
-            <NumInput value={selectedKf.centerY ?? params.centerY} min={-500} max={500} step={1}
-              onChange={v => updateKf('centerY', v)} />
-            <span className="kf-unit">mm</span>
+          <div className="kf-pad-wrap">
+            <span className="kf-pad-label">Centro</span>
+            <CenterPad
+              layers={layers}
+              params={params}
+              svgH={svgH}
+              centerX={selectedKf.centerX ?? params.centerX}
+              centerY={selectedKf.centerY ?? params.centerY}
+              kfT={selectedKf.t}
+              onChange={(x, y) => {
+                if (!selectedKfId) return;
+                onKeyframesChange(
+                  keyframes.map(k => k.id === selectedKfId ? { ...k, centerX: x, centerY: y } : k),
+                );
+              }}
+            />
           </div>
           <div className="kf-field">
             <label>Escala X</label>
