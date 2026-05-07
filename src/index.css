@@ -508,43 +508,44 @@ input[type="range"].t-range::-moz-range-thumb  { background: var(--t-axis); }
 .path-item-header {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
+}
+.path-id {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
 }
 .path-tag {
-  font-size: 8px;
-  background: transparent;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
+  /* layout */
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
   padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  /* typography */
+  font: inherit;
+  font-size: 8px;
   font-weight: 700;
   font-variation-settings: 'wght' 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-}
-.path-len { font-size: 10px; color: var(--muted); margin-left: auto; flex-shrink: 0; }
-
-/* Full-width clickable row that collapses/expands the override panel */
-.path-collapse-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-  min-width: 0;
+  white-space: nowrap;
+  /* colour — expanded state */
+  color: var(--accent);
   background: transparent;
-  border: none;
-  color: inherit;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  font-variation-settings: 'wght' 600;
+  border: 1px solid var(--accent);
+  /* button reset */
   cursor: pointer;
-  padding: 0;
-  text-align: left;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
 }
-.path-collapse-row:hover { color: var(--ink); }
-.path-collapse-row code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.path-chevron { flex-shrink: 0; color: var(--muted); }
+.path-tag:hover { background: var(--accent); color: #fff; }
+.path-tag.path-tag-collapsed {
+  opacity: 0.35;
+}
+.path-len { font-size: 10px; color: var(--muted); flex-shrink: 0; }
 .path-overrides { padding-left: 22px; }
 .path-overrides .param-row { padding: 2px 0; }
 .path-overrides input[type="number"] { width: 62px; }

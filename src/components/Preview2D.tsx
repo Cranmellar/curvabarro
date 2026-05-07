@@ -610,7 +610,7 @@ export function Preview2D({
     } else if (d.button === 2) {
       setView(v => ({
         ...v,
-        azimuth:   (d.startView.azimuth   + dx * 0.5 + 360) % 360,
+        azimuth:   (d.startView.azimuth   - dx * 0.5 + 360) % 360,
         elevation: Math.max(0, Math.min(89, d.startView.elevation - dy * 0.3)),
       }));
     }

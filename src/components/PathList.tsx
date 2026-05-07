@@ -13,23 +13,7 @@ interface Props {
   ) => void;
 }
 
-/** Inline chevron that rotates when collapsed */
-function Chevron({ open }: { open: boolean }) {
-  return (
-    <svg
-      className="path-chevron"
-      width="9" height="9" viewBox="0 0 9 9"
-      fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
-      style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform 0.15s' }}
-    >
-      <polyline points="1.5,3 4.5,6 7.5,3" />
-    </svg>
-  );
-}
-
 export function PathList({ paths, params, onToggle, onOverride }: Props) {
-  // Start all paths expanded
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   if (paths.length === 0) return null;
@@ -47,38 +31,29 @@ export function PathList({ paths, params, onToggle, onOverride }: Props) {
       <div className="section-title">Rutas SVG ({paths.length})</div>
       {paths.map(path => {
         const isCollapsed = collapsed.has(path.id);
-        const showBody    = path.enabled && !isCollapsed;
-
         return (
           <div key={path.id} className={`path-item ${path.enabled ? '' : 'path-disabled'}`}>
-
-            {/* ── Header row ── */}
             <div className="path-item-header">
-
-              {/* Checkbox — toggles enabled, does NOT collapse */}
               <input
                 type="checkbox"
                 checked={path.enabled}
                 onChange={() => onToggle(path.id)}
-                onClick={e => e.stopPropagation()}
               />
+              <code className="path-id">{path.id}</code>
 
-              {/* Clickable area — collapses/expands the override panel */}
+              {/* Tag pill doubles as the collapse toggle */}
               <button
-                className="path-collapse-row"
+                className={`path-tag${isCollapsed ? ' path-tag-collapsed' : ''}`}
                 onClick={() => toggleCollapse(path.id)}
-                title={isCollapsed ? 'Expandir' : 'Colapsar'}
+                title={isCollapsed ? 'Expandir parámetros' : 'Colapsar parámetros'}
               >
-                <Chevron open={!isCollapsed} />
-                <code>{path.id}</code>
-                <span className="path-tag">{path.tagName}</span>
-                <span className="path-len">{path.totalLength.toFixed(1)} u</span>
+                {path.tagName}
               </button>
 
+              <span className="path-len">{path.totalLength.toFixed(1)} u</span>
             </div>
 
-            {/* ── Override fields ── */}
-            {showBody && (
+            {path.enabled && !isCollapsed && (
               <div className="path-overrides">
                 {([
                   { key: 'ampNOverride' as const, label: 'Amp N', unit: 'mm', ph: params.lissAmpN },
