@@ -40,7 +40,7 @@ function buildHeader(params: PrintParams, numLayers: number): string {
     : Math.max(1, Math.ceil(params.totalHeight / params.layerHeight));
   return [
     '; ============================================================',
-    '; CurvaBarro — Lissajous G-code Generator',
+    '; BarroCode — Lissajous G-code Generator',
     '; ============================================================',
     `; Lissajous amp N / T   : ${params.lissAmpN} / ${params.lissAmpT} mm`,
     `; Lissajous wl  N / T   : ${params.lissWlN} / ${params.lissWlT} mm`,

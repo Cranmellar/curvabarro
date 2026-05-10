@@ -1,4 +1,4 @@
-# CurvaBarro
+# BarroCode
 
 Herramienta web para convertir curvas (.svg) en trayectorias oscilantes (.gcode) para el modelado por deposición líquida. Diseñada para quienes trabajan con extrusoras de arcilla y máquinas CNC.
 

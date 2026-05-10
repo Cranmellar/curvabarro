@@ -202,7 +202,7 @@ export default function App() {
       {/* ── Panel izquierdo ── */}
       <div className="sidebar left-sidebar" style={{ width: leftPanel.size }}>
         <div className="app-banner">
-          <img src={logoUrl} alt="CurvaBarro" />
+          <img src={logoUrl} alt="BarroCode" />
           <div className="banner-sub">SVG → Lissajous → G-code</div>
         </div>
 

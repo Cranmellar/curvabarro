@@ -6,7 +6,7 @@ interface Props {
   filename?: string;
 }
 
-export function GcodeOutput({ gcode, filename = 'curvabarro.gcode' }: Props) {
+export function GcodeOutput({ gcode, filename = 'barrocode.gcode' }: Props) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
