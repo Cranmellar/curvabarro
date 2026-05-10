@@ -30,15 +30,13 @@ npm run dev
 
 Abre la URL que aparece en la terminal (normalmente `http://localhost:5173`).
 
-### Versión portable (USB)
-
-El repo incluye un build precompilado en `dist/`. En cualquier computador con Node.js instalado:
+### Build de producción
 
 ```bash
-node dist/server.js
+npm run build
 ```
 
-O simplemente haz doble clic en `dist/Abrir CurvaBarro.bat` (Windows).
+Genera la versión web estática en `dist/`. Esa carpeta puede servirse desde cualquier servidor estático o publicarse en GitHub Pages (ver `.github/workflows/deploy.yml`).
 
 ---
 
@@ -220,9 +218,7 @@ public/
   logo.png                    logotipo completo
   isotype.png                 isotipo (ícono cuadrado)
   fonts/                      GSCode variable font
-dist/
-  server.js                   servidor Node.js portátil para uso sin conexión
-  Abrir CurvaBarro.bat        lanzador para Windows
+dist/                         salida del build estático (GitHub Pages)
 ```
 
 ---

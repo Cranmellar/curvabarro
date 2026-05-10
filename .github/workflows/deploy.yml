@@ -29,9 +29,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-        env:
-          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
-          ELECTRON_BUILDER_SKIP_DOWNLOAD: 1
 
       - run: npm run build
 
