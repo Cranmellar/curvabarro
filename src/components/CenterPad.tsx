@@ -77,7 +77,7 @@ export function CenterPad({ layers, params, svgH, centerX, centerY, kfT, onChang
     tRef.current = T;
 
     // ── Background ──────────────────────────────────────────────────────────
-    ctx.fillStyle = '#EDEBE4';
+    ctx.fillStyle = '#EDEDF2';
     ctx.fillRect(0, 0, W, H);
 
     // ── Dim silhouette: every layer except the active one ───────────────────

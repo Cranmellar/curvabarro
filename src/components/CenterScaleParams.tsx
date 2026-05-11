@@ -86,8 +86,8 @@ export function CenterScaleParams({ params, onChange }: Props) {
           </div>
 
           <button
-            className="btn-sample"
-            style={{ margin: '4px 12px 4px', fontSize: 10 }}
+            className="btn-reset"
+            style={{ margin: '4px 12px' }}
             onClick={() => onChange({ ...params, centerX: 0, centerY: 0 })}
           >
             Resetear centro
@@ -175,8 +175,8 @@ export function CenterScaleParams({ params, onChange }: Props) {
           )}
 
           <button
-            className="btn-sample"
-            style={{ margin: '4px 12px 8px', fontSize: 10 }}
+            className="btn-reset"
+            style={{ margin: '4px 12px 8px' }}
             onClick={() => onChange({ ...params, scaleX: 1, scaleY: 1 })}
           >
             Resetear escala

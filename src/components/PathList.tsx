@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function PathList({ paths, params, hasKeyframes, onToggle, onOverride }: Props) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(paths.map(p => p.id)));
 
   if (paths.length === 0) return null;
 

@@ -156,6 +156,28 @@ export function LissajousParams({ params, onChange, onReset }: Props) {
         <button className="btn-reset" onClick={onReset}>Reiniciar</button>
       </div>
 
+      {/* ── Preajustes ── */}
+      <Sec title="Preajustes">
+        <div className="preset-grid">
+          {PRESETS.map(p => (
+            <button key={p.label} className="btn-preset" onClick={() =>
+              onChange({ ...params,
+                lissAmpN: p.ampN, lissAmpT: p.ampT,
+                lissWlN: p.wlN,  lissWlT: p.wlT,
+                lissDelta: rad(p.d),
+              })
+            }>
+              <LissajousMini
+                ampN={p.ampN} ampT={p.ampT}
+                wlN={p.wlN}   wlT={p.wlT}
+                delta={rad(p.d)}
+              />
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </Sec>
+
       {/* ── Eje N ── */}
       <Sec title="Eje N — Normal  (izq. / der.)">
         <Slider label="Amplitud N" value={params.lissAmpN}
@@ -194,28 +216,6 @@ export function LissajousParams({ params, onChange, onReset }: Props) {
           min={-360} max={360} step={1} unit="°"
           hint="Fase extra añadida en cada capa — crea efecto de torsión/espiral"
           onChange={v => set('phaseShiftPerLayer', rad(v))} />
-      </Sec>
-
-      {/* ── Preajustes ── */}
-      <Sec title="Preajustes">
-        <div className="preset-grid">
-          {PRESETS.map(p => (
-            <button key={p.label} className="btn-preset" onClick={() =>
-              onChange({ ...params,
-                lissAmpN: p.ampN, lissAmpT: p.ampT,
-                lissWlN: p.wlN,  lissWlT: p.wlT,
-                lissDelta: rad(p.d),
-              })
-            }>
-              <LissajousMini
-                ampN={p.ampN} ampT={p.ampT}
-                wlN={p.wlN}   wlT={p.wlT}
-                delta={rad(p.d)}
-              />
-              {p.label}
-            </button>
-          ))}
-        </div>
       </Sec>
 
       {/* ── Extrusión ── */}

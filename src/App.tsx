@@ -13,6 +13,19 @@ import { CenterScaleParams } from './components/CenterScaleParams';
 import { NumInput } from './components/NumInput';
 import { CenterPad } from './components/CenterPad';
 
+const _S1 = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480"><path d="M480 160 320 0H160v160H0v160l160 160h160V320h160V160z" fill="#808"/></svg>`;
+const _S2 = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480"><path d="m337 320 63-160h-80a160 160 0 1 0-320 0h160L80 320h80a160 160 0 1 0 320 0H337Z" fill="#808"/></svg>`;
+const _S3 = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480"><path d="M360 240c-66.3 0-120-53.7-120-120a120 120 0 1 0-120 120c66.3 0 120 53.7 120 120a120 120 0 1 0 120-120Z" fill="#808"/></svg>`;
+const _S4 = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480"><path d="M450 210a57 57 0 0 1-40.3-97.3 30 30 0 1 0-42.4-42.4A57 57 0 0 1 270 30a30 30 0 1 0-60 0 57 57 0 0 1-97.3 40.3 30 30 0 1 0-42.4 42.4A57 57 0 0 1 30 210a30 30 0 1 0 0 60 57 57 0 0 1 40.3 97.3 30 30 0 1 0 42.4 42.4A57 57 0 0 1 210 450a30 30 0 1 0 60 0 57 57 0 0 1 97.3-40.3 30 30 0 1 0 42.4-42.4A57 57 0 0 1 450 270a30 30 0 1 0 0-60Zm-210 90a60 60 0 1 1 0-120 60 60 0 0 1 0 120Z" fill="#808"/></svg>`;
+const svgUri = (s: string) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}`;
+
+const SAMPLES = [
+  { uri: svgUri(_S1), raw: _S1, name: 'muestra-1.gcode' },
+  { uri: svgUri(_S2), raw: _S2, name: 'muestra-2.gcode' },
+  { uri: svgUri(_S3), raw: _S3, name: 'muestra-3.gcode' },
+  { uri: svgUri(_S4), raw: _S4, name: 'muestra-4.gcode' },
+];
+
 const DEFAULT_PARAMS: PrintParams = {
   sampleSpacing: 2,
   lissAmpN: 3,
@@ -107,6 +120,7 @@ export default function App() {
   const [timelineProgress, setTimelineProgress] = useState(0);
   const [keyframes, setKeyframes] = useState<WaveKeyframe[]>([]);
   const [centerTab, setCenterTab] = useState<'preview' | 'gcode'>('preview');
+  const [sampleIndex, setSampleIndex] = useState(0);
   const [selectedKfId, setSelectedKfId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastRawRef = useRef<{ raw: string; spacing: number } | null>(null);
@@ -219,17 +233,10 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  async function loadSample() {
-    try {
-      const res = await fetch(import.meta.env.BASE_URL + 'sample.svg');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      if (!text.trim().startsWith('<')) throw new Error('Respuesta inesperada del servidor');
-      setGcodeFilename('curva.de.barro.gcode');
-      doParse(text, params.sampleSpacing);
-    } catch (e) {
-      setError(`No se pudo cargar el SVG de ejemplo. ${(e as Error).message}`);
-    }
+  function loadSample() {
+    const s = SAMPLES[sampleIndex];
+    setGcodeFilename(s.name);
+    doParse(s.raw, params.sampleSpacing);
   }
 
   return (
@@ -272,9 +279,27 @@ export default function App() {
           )}
         </div>
 
-        <button className="btn-sample" onClick={loadSample}>
-          Cargar SVG de ejemplo
-        </button>
+        <div style={{ display:'flex', flexDirection:'row', flexShrink:0, margin:'8px 12px 0', border:'2px solid #4F46E5', borderRadius:6, overflow:'hidden', background:'#fff', minHeight:76 }}>
+          <button
+            style={{ width:36, flexShrink:0, background:'transparent', border:'none', borderRight:'1px solid #D0D0D9', fontSize:22, cursor:'pointer', color:'#1A1640', padding:0 }}
+            onClick={() => setSampleIndex(i => (i + SAMPLES.length - 1) % SAMPLES.length)}
+          >‹</button>
+          <button
+            style={{ flex:1, minWidth:0, display:'flex', flexDirection:'row', alignItems:'center', justifyContent:'center', gap:12, padding:'10px 14px', background:'transparent', border:'none', cursor:'pointer' }}
+            onClick={loadSample}
+            title={`Cargar muestra ${sampleIndex + 1}`}
+          >
+            <img src={SAMPLES[sampleIndex].uri} width={48} height={48} style={{ display:'block', flexShrink:0 }} alt="" />
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:3 }}>
+              <span style={{ fontSize:11, color:'#1A1640', fontWeight:700, letterSpacing:'0.04em' }}>Muestra {sampleIndex + 1}</span>
+              <span style={{ fontSize:10, color:'#696975', letterSpacing:'0.06em' }}>de {SAMPLES.length} · clic para cargar</span>
+            </div>
+          </button>
+          <button
+            style={{ width:36, flexShrink:0, background:'transparent', border:'none', borderLeft:'1px solid #D0D0D9', fontSize:22, cursor:'pointer', color:'#1A1640', padding:0 }}
+            onClick={() => setSampleIndex(i => (i + 1) % SAMPLES.length)}
+          >›</button>
+        </div>
 
         {error && <div className="error-msg">⚠ {error}</div>}
 
@@ -317,6 +342,7 @@ export default function App() {
           gcodeFilename={gcodeFilename}
           selectedKfId={selectedKfId}
           onKfSelect={setSelectedKfId}
+          onAddKeyframe={addKeyframe}
         />
 
         {/* Divisor horizontal redimensionable */}
@@ -327,14 +353,49 @@ export default function App() {
           <div className="kf-panel">
             <div className="toolbar">
               <span className="toolbar-title">Keyframes</span>
+
+              <div className="kf-tag-row">
+                {keyframes.map(kf => {
+                  const t = kf.t;
+                  const hue = Math.round(218 - 198 * t);
+                  const sat = Math.round(72 + t * 16);
+                  const lit  = Math.round(50 + t * 12);
+                  const color = kf.id === selectedKfId
+                    ? 'var(--accent)'
+                    : `hsl(${hue},${sat}%,${lit}%)`;
+                  return (
+                    <div
+                      key={kf.id}
+                      className={`kf-tag${kf.id === selectedKfId ? ' kf-tag--selected' : ''}`}
+                      style={{ '--kf-color': color } as React.CSSProperties}
+                      onClick={() => setSelectedKfId(kf.id === selectedKfId ? null : kf.id)}
+                      title={`KF ${Math.round(t * 100)}%`}
+                    >
+                      <span className="kf-tag-notch" />
+                      <span className="kf-tag-body">
+                        {Math.round(t * 100)}%
+                        <button
+                          className="kf-tag-del"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setKeyframes(keyframes.filter(k => k.id !== kf.id));
+                            if (selectedKfId === kf.id) setSelectedKfId(null);
+                          }}
+                        >×</button>
+                      </span>
+                    </div>
+                  );
+                })}
+                {keyframes.length === 0 && (
+                  <span className="kf-empty-hint">
+                    Añade un keyframe para animar la onda por capas
+                  </span>
+                )}
+              </div>
+
               <button className="btn-small kf-add-btn" onClick={addKeyframe}>
                 ⊕ Añadir en {Math.round(timelineProgress * 100)}%
               </button>
-              {selectedKfId && (
-                <button className="btn-small kf-del-btn" onClick={deleteKeyframe}>
-                  ✕ Eliminar
-                </button>
-              )}
               {keyframes.length > 0 && (
                 <button className="btn-small kf-del-btn kf-trash-btn" onClick={clearAllKeyframes}
                   title="Eliminar todos los keyframes">
@@ -346,92 +407,104 @@ export default function App() {
                   </svg>
                 </button>
               )}
-              {keyframes.length === 0 && (
-                <span className="kf-empty-hint">
-                  Añade un keyframe para animar la onda por capas
-                </span>
-              )}
             </div>
 
             {selectedKf && (
               <div className="kf-editor">
-                <span className="kf-editor-title">
-                  KF {(selectedKf.t * 100).toFixed(1)}%
-                </span>
-                <div className="kf-field">
-                  <label>Amp N</label>
-                  <div className="kf-field-input-row">
-                    <NumInput value={selectedKf.ampN} min={0} max={30} step={0.1}
-                      onChange={v => updateKf('ampN', v)} />
-                    <span className="kf-unit">mm</span>
+
+                {/* Group 1 — Amplitudes y longitudes de onda */}
+                <div className="kf-group">
+                  <div className="kf-field">
+                    <label>Amp N</label>
+                    <div className="kf-field-input-row">
+                      <NumInput value={selectedKf.ampN} min={0} max={30} step={0.1}
+                        onChange={v => updateKf('ampN', v)} />
+                      <span className="kf-unit">mm</span>
+                    </div>
+                  </div>
+                  <div className="kf-field">
+                    <label>λ N</label>
+                    <div className="kf-field-input-row">
+                      <NumInput value={selectedKf.wlN} min={1} max={200} step={1}
+                        onChange={v => updateKf('wlN', v)} />
+                      <span className="kf-unit">mm</span>
+                    </div>
+                  </div>
+                  <div className="kf-field">
+                    <label>Amp T</label>
+                    <div className="kf-field-input-row">
+                      <NumInput value={selectedKf.ampT} min={0} max={30} step={0.1}
+                        onChange={v => updateKf('ampT', v)} />
+                      <span className="kf-unit">mm</span>
+                    </div>
+                  </div>
+                  <div className="kf-field">
+                    <label>λ T</label>
+                    <div className="kf-field-input-row">
+                      <NumInput value={selectedKf.wlT} min={1} max={200} step={1}
+                        onChange={v => updateKf('wlT', v)} />
+                      <span className="kf-unit">mm</span>
+                    </div>
                   </div>
                 </div>
-                <div className="kf-field">
-                  <label>Amp T</label>
-                  <div className="kf-field-input-row">
-                    <NumInput value={selectedKf.ampT} min={0} max={30} step={0.1}
-                      onChange={v => updateKf('ampT', v)} />
-                    <span className="kf-unit">mm</span>
+
+                {/* Group 2 — Posición KF + Delta */}
+                <div className="kf-group">
+                  <span className="kf-editor-title">
+                    KF {(selectedKf.t * 100).toFixed(1)}%
+                  </span>
+                  <div className="kf-field">
+                    <label>Delta</label>
+                    <div className="kf-field-input-row">
+                      <NumInput
+                        value={parseFloat((selectedKf.delta * 180 / Math.PI).toFixed(1))}
+                        min={-180} max={180} step={1}
+                        onChange={v => updateKf('delta', v * Math.PI / 180)}
+                      />
+                      <span className="kf-unit">°</span>
+                    </div>
                   </div>
                 </div>
-                <div className="kf-field">
-                  <label>λ N</label>
-                  <div className="kf-field-input-row">
-                    <NumInput value={selectedKf.wlN} min={1} max={200} step={1}
-                      onChange={v => updateKf('wlN', v)} />
-                    <span className="kf-unit">mm</span>
+
+                {/* Group 3 — Escala */}
+                <div className="kf-group">
+                  <div className="kf-field">
+                    <label>Escala X</label>
+                    <div className="kf-field-input-row">
+                      <NumInput value={selectedKf.scaleX ?? params.scaleX} min={0.05} max={5} step={0.01}
+                        onChange={v => updateKf('scaleX', v)} />
+                    </div>
+                  </div>
+                  <div className="kf-field">
+                    <label>Escala Y</label>
+                    <div className="kf-field-input-row">
+                      <NumInput value={selectedKf.scaleY ?? params.scaleY} min={0.05} max={5} step={0.01}
+                        onChange={v => updateKf('scaleY', v)} />
+                    </div>
                   </div>
                 </div>
-                <div className="kf-field">
-                  <label>λ T</label>
-                  <div className="kf-field-input-row">
-                    <NumInput value={selectedKf.wlT} min={1} max={200} step={1}
-                      onChange={v => updateKf('wlT', v)} />
-                    <span className="kf-unit">mm</span>
-                  </div>
-                </div>
-                <div className="kf-field">
-                  <label>Delta</label>
-                  <div className="kf-field-input-row">
-                    <NumInput
-                      value={parseFloat((selectedKf.delta * 180 / Math.PI).toFixed(1))}
-                      min={-180} max={180} step={1}
-                      onChange={v => updateKf('delta', v * Math.PI / 180)}
+
+                {/* Group 4 — Visualizador 2D de centro */}
+                <div className="kf-group kf-group-center">
+                  <div className="kf-pad-wrap">
+                    <span className="kf-pad-label">Centro</span>
+                    <CenterPad
+                      layers={layers}
+                      params={params}
+                      svgH={svgH}
+                      centerX={selectedKf.centerX ?? params.centerX}
+                      centerY={selectedKf.centerY ?? params.centerY}
+                      kfT={selectedKf.t}
+                      onChange={(x, y) => {
+                        if (!selectedKfId) return;
+                        setKeyframes(keyframes.map(k =>
+                          k.id === selectedKfId ? { ...k, centerX: x, centerY: y } : k,
+                        ));
+                      }}
                     />
-                    <span className="kf-unit">°</span>
                   </div>
                 </div>
-                <div className="kf-pad-wrap">
-                  <span className="kf-pad-label">Centro</span>
-                  <CenterPad
-                    layers={layers}
-                    params={params}
-                    svgH={svgH}
-                    centerX={selectedKf.centerX ?? params.centerX}
-                    centerY={selectedKf.centerY ?? params.centerY}
-                    kfT={selectedKf.t}
-                    onChange={(x, y) => {
-                      if (!selectedKfId) return;
-                      setKeyframes(keyframes.map(k =>
-                        k.id === selectedKfId ? { ...k, centerX: x, centerY: y } : k,
-                      ));
-                    }}
-                  />
-                </div>
-                <div className="kf-field">
-                  <label>Escala X</label>
-                  <div className="kf-field-input-row">
-                    <NumInput value={selectedKf.scaleX ?? params.scaleX} min={0.05} max={5} step={0.01}
-                      onChange={v => updateKf('scaleX', v)} />
-                  </div>
-                </div>
-                <div className="kf-field" style={{ borderRight: 'none' }}>
-                  <label>Escala Y</label>
-                  <div className="kf-field-input-row">
-                    <NumInput value={selectedKf.scaleY ?? params.scaleY} min={0.05} max={5} step={0.01}
-                      onChange={v => updateKf('scaleY', v)} />
-                  </div>
-                </div>
+
               </div>
             )}
           </div>
