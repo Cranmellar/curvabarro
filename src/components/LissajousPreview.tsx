@@ -150,12 +150,12 @@ export function LissajousPreview({ params }: Props) {
 
     // Metrics caption
     ctx.save();
-    ctx.font = '700 8px GSCode, monospace';
-    ctx.fillStyle = 'rgba(15,15,20,0.32)';
+    ctx.font = '700 12px GSCode, monospace';
+    ctx.fillStyle = 'rgba(15,15,20,0.45)';
     ctx.textAlign = 'left';
     ctx.fillText(
       `N ${lissAmpN.toFixed(1)}mm  λ${lissWlN}mm   T ${lissAmpT.toFixed(1)}mm  λ${lissWlT}mm   δ${(lissDelta * 180 / Math.PI).toFixed(0)}°`,
-      8, H - 7,
+      10, H - 9,
     );
     ctx.restore();
   }, [params]);
@@ -182,10 +182,6 @@ export function LissajousPreview({ params }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="toolbar">
-        <span className="toolbar-title">Marco del extrusor</span>
-        <span className="toolbar-hint">T = tangente · N = normal · punto = dirección</span>
-      </div>
       <canvas ref={canvasRef} className="lissajous-canvas" style={{ flex: 1 }} />
     </div>
   );
