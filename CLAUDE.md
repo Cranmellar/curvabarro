@@ -204,6 +204,22 @@ The lockfile being gitignored is unusual — accept it; don't try to commit it.
 
 ---
 
+## Documentation map
+
+When you need context, this is where to look:
+
+- [README.md](README.md) — public overview with mermaid diagrams.
+- [CLAUDE.md](CLAUDE.md) — this file. Operating manual for Claude sessions.
+- [docs/usage.md](docs/usage.md) — user-facing flow and parameter reference.
+- [docs/architecture.md](docs/architecture.md) — pipeline detail (more technical than this file's diagram).
+- [docs/fabrication-notes.md](docs/fabrication-notes.md) — clay-printer criteria informing the design.
+- [docs/research-notes.md](docs/research-notes.md) — **open research notes**, unpriorized ideas. Read before suggesting any new feature.
+- [pendientes.md](pendientes.md) — **actionable backlog**, prioritized in waves. Read before starting any new ticket.
+- [pendientes-wave-1.md](pendientes-wave-1.md) — self-contained execution prompt for Wave 1 (P0 bugs). Pattern for other waves.
+- [frontend.md](frontend.md) / [README.frontend.md](README.frontend.md) — **exploratory** visual direction (CLI/claude-mem aesthetic). **Not the current guideline.** Do not migrate the UI toward this document without explicit user instruction. The current visual system is described in the "CSS" section above.
+
+---
+
 ## Commit and review hygiene
 
 - Conventional-commit prefixes are welcome but not enforced. The existing log mixes `feat:`, `fix:`, `chore:`, `ci:`, and plain prose.

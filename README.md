@@ -198,7 +198,8 @@ dist/
 - [docs/usage.md](docs/usage.md): flujo de uso y parámetros.
 - [docs/architecture.md](docs/architecture.md): pipeline interno y responsabilidades.
 - [docs/fabrication-notes.md](docs/fabrication-notes.md): criterios de fabricación con arcilla.
-- [pendientes.md](pendientes.md): notas de trabajo abiertas.
+- [docs/research-notes.md](docs/research-notes.md): ideas de diseño y fabricación en exploración.
+- [pendientes.md](pendientes.md): backlog accionable de tickets atómicos, priorizado.
 
 ## Tecnologías
 

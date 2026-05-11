@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BarroCode UI Interactive Mockup</title>
+  <style>
+    @font-face {
+      font-family: "GSCode";
+      src: url("../public/fonts/GSCode.ttf") format("truetype");
+      font-weight: 100 900;
+    }
+
+    :root {
+      --bg: #EDEBE4;
+      --panel: #F7F5F0;
+      --panel-r: #F2F0EB;
+      --ink: #100E09;
+      --ink-2: #3C3830;
+      --muted: #6A6762;
+      --rule: #D4CFCA;
+      --rule-strong: rgba(16, 14, 9, .46);
+      --accent: #4F46E5;
+      --n: #1D64B4;
+      --t: #B84F22;
+      --ok: #1C6E45;
+      --err: #AA2A2A;
+      --radius: 4px;
+      font-family: "GSCode", "Cascadia Code", ui-monospace, monospace;
+      font-size: 12px;
+      color: var(--ink);
+      background: var(--bg);
+      font-variant-numeric: tabular-nums;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    button, input { font: inherit; }
+    button, .row, .path, .disclosure { outline: none; }
+    button:focus-visible,
+    input:focus-visible,
+    .row:focus-visible,
+    .path:focus-visible,
+    .disclosure:focus-visible {
+      box-shadow: 0 0 0 2px var(--accent);
+      border-color: var(--accent) !important;
+      position: relative;
+      z-index: 2;
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-columns: 248px 1fr 282px;
+      grid-template-rows: 1fr;
+      background: var(--bg);
+    }
+
+    .side {
+      background: var(--panel);
+      border-right: 1px solid var(--rule);
+      overflow: auto;
+      min-width: 0;
+    }
+
+    .side.right {
+      border-right: 0;
+      border-left: 1px solid var(--rule);
+      background: var(--panel-r);
+    }
+
+    .brand {
+      padding: 16px 16px 12px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1;
+      letter-spacing: 0;
+      font-weight: 820;
+    }
+
+    .brand small {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 720;
+      letter-spacing: .16em;
+    }
+
+    .module {
+      border-top: 1px solid var(--rule-strong);
+    }
+    .module:first-of-type { border-top: 0; }
+
+    .module-title {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 16px;
+      color: rgba(16, 14, 9, .62);
+      font-size: 9px;
+      font-weight: 760;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+    }
+    .mark {
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .drop {
+      margin: 0 12px 10px;
+      min-height: 74px;
+      border: 1px dashed var(--rule-strong);
+      border-radius: var(--radius);
+      display: grid;
+      place-content: center;
+      gap: 4px;
+      text-align: center;
+      background:
+        linear-gradient(var(--panel), var(--panel)) padding-box,
+        repeating-linear-gradient(90deg, transparent, transparent 7px, rgba(16,14,9,.035) 7px, rgba(16,14,9,.035) 8px);
+    }
+    .drop strong { font-size: 11px; }
+    .drop span { color: var(--muted); font-size: 10px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid var(--rule-strong);
+      border-radius: var(--radius);
+      background: transparent;
+      color: var(--ink-2);
+      min-height: 27px;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 680;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+    .btn:hover { background: var(--ink); color: var(--panel); }
+    .btn.primary {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn.primary:hover { background: var(--accent); color: #fff; }
+    .full { width: calc(100% - 24px); margin: 0 12px 12px; }
+
+    .path {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 16px;
+      border-top: 1px solid var(--rule);
+      cursor: pointer;
+    }
+    .path.active { background: rgba(79,70,229,.055); }
+    .path .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .tag {
+      color: var(--accent);
+      border: 1px solid currentColor;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 8px;
+      font-weight: 760;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      min-height: 29px;
+      padding: 3px 16px;
+      border-top: 1px solid rgba(212,207,202,.62);
+    }
+    .row label { color: var(--ink-2); font-size: 11px; }
+    .value {
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 760;
+      min-width: 58px;
+      text-align: right;
+    }
+    .unit { color: var(--muted); font-size: 9px; }
+
+    .toggle {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--ink-2);
+      font-size: 11px;
+    }
+
+    .disclosure {
+      width: 100%;
+      border: 0;
+      border-top: 1px solid rgba(212,207,202,.62);
+      background: transparent;
+      color: var(--muted);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 16px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .disclosure strong {
+      color: var(--ink-2);
+      font-size: 10px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .details { display: none; }
+    .details.open { display: block; }
+
+    .main {
+      display: grid;
+      grid-template-rows: 35px 1fr 220px;
+      min-width: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--rule);
+      min-width: 0;
+    }
+    .status {
+      color: var(--ok);
+      font-weight: 780;
+      letter-spacing: .12em;
+      font-size: 9px;
+    }
+    .file { color: var(--ink-2); }
+    .spacer { flex: 1; }
+    .metric {
+      color: var(--muted);
+      font-size: 10px;
+      border-left: 1px solid var(--rule);
+      padding-left: 10px;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(rgba(16,14,9,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(16,14,9,.045) 1px, transparent 1px),
+        #EDEBE4;
+      background-size: 38px 38px;
+    }
+    svg.trajectory {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .canvas-label {
+      position: absolute;
+      top: 10px;
+      left: 12px;
+      color: rgba(16,14,9,.45);
+      font-size: 9px;
+      font-weight: 760;
+      letter-spacing: .18em;
+    }
+    .gizmo {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      width: 46px;
+      height: 46px;
+      border: 1px solid var(--rule);
+      border-radius: 50%;
+      background: rgba(247,245,240,.86);
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 8px;
+    }
+    .timeline {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 12px;
+      height: 24px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 9px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .track {
+      position: relative;
+      height: 3px;
+      background: var(--rule);
+    }
+    .track::before {
+      content: "";
+      position: absolute;
+      inset: 0 62% 0 0;
+      background: var(--accent);
+    }
+    .diamond {
+      position: absolute;
+      left: 38%;
+      top: 50%;
+      width: 11px;
+      height: 11px;
+      transform: translate(-50%, -50%) rotate(45deg);
+      background: var(--accent);
+      border: 2px solid var(--panel);
+    }
+
+    .bottom {
+      display: grid;
+      grid-template-columns: 210px 1fr 1fr;
+      border-top: 1px solid var(--rule);
+      background: var(--panel);
+      min-width: 0;
+    }
+    .pane {
+      min-width: 0;
+      border-right: 1px solid var(--rule);
+      display: grid;
+      grid-template-rows: 31px 1fr;
+    }
+    .pane:last-child { border-right: 0; }
+    .pane-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--rule);
+      color: rgba(16,14,9,.58);
+      font-size: 9px;
+      font-weight: 760;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+    .pane-body { padding: 12px; min-height: 0; overflow: hidden; }
+
+    .pad {
+      width: 74px;
+      height: 74px;
+      border: 1px solid var(--rule-strong);
+      background:
+        linear-gradient(rgba(16,14,9,.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(16,14,9,.08) 1px, transparent 1px);
+      background-size: 18px 18px;
+      position: relative;
+    }
+    .pad::after {
+      content: "+";
+      color: var(--accent);
+      position: absolute;
+      left: 43px;
+      top: 28px;
+      font-size: 16px;
+    }
+    .mini-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+    .kv { display: grid; gap: 6px; color: var(--muted); font-size: 10px; }
+    .kv strong { color: var(--ink); font-size: 14px; }
+
+    .code {
+      height: 100%;
+      min-height: 0;
+      border: 1px solid var(--rule);
+      background: #F2F6EF;
+      color: #1D421D;
+      padding: 9px;
+      overflow: hidden;
+      line-height: 1.55;
+      white-space: pre;
+      font-size: 10px;
+    }
+    .diag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .bar {
+      height: 8px;
+      flex: 1;
+      border: 1px solid var(--rule-strong);
+      background:
+        linear-gradient(90deg, var(--ok) 0 72%, transparent 72%),
+        repeating-linear-gradient(135deg, transparent 0 4px, rgba(16,14,9,.12) 4px 5px);
+    }
+
+    .slider {
+      padding: 9px 16px 11px;
+      border-top: 1px solid rgba(212,207,202,.62);
+    }
+    .slider-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 7px;
+    }
+    .slider-head label {
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 760;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .slider-head strong {
+      font-size: 18px;
+      font-weight: 820;
+      letter-spacing: 0;
+    }
+    .range {
+      position: relative;
+      height: 3px;
+      background: var(--rule);
+    }
+    .range span {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--w, 55%);
+      background: var(--c, var(--accent));
+    }
+    .range i {
+      position: absolute;
+      left: var(--w, 55%);
+      top: 50%;
+      width: 13px;
+      height: 13px;
+      transform: translate(-50%, -50%);
+      border-radius: 2px;
+      border: 2px solid var(--panel);
+      background: var(--c, var(--ink));
+    }
+    .presets {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 8px 12px 12px;
+    }
+    .preset {
+      height: 42px;
+      border: 1px solid var(--rule);
+      border-radius: var(--radius);
+      background: #fff;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+    }
+
+    .wave-box {
+      height: 100%;
+      border: 1px solid var(--rule);
+      position: relative;
+      background: #FBFAF7;
+    }
+    .axis-n, .axis-t {
+      position: absolute;
+      font-size: 10px;
+      font-weight: 780;
+    }
+    .axis-n { color: var(--n); top: 8px; left: 10px; }
+    .axis-t { color: var(--t); bottom: 8px; right: 10px; }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 210px 1fr; }
+      .right { display: none; }
+      .bottom { grid-template-columns: 180px 1fr; }
+      .pane:last-child { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="side">
+      <header class="brand">
+        <h1>BarroCode</h1>
+        <small>SVG &gt; PATH &gt; WAVE &gt; G-CODE</small>
+      </header>
+
+      <section class="module">
+        <div class="module-title"><span class="mark">#</span> SVG</div>
+        <div class="drop" tabindex="0">
+          <strong>LOAD SVG</strong>
+          <span>o sample.svg ready</span>
+        </div>
+        <button class="btn full">use sample</button>
+      </section>
+
+      <section class="module">
+        <div class="module-title"><span class="mark">|</span> PATHS</div>
+        <div class="path active" tabindex="0"><span class="mark">&gt;</span><span class="name">curve-main</span><span class="tag">PATH</span></div>
+        <div class="path" tabindex="0"><span class="mark">o</span><span class="name">ellipse-support</span><span class="tag">ELL</span></div>
+        <button class="disclosure" data-target="path-detail"><span>[x]</span><strong>overrides</strong><span>2</span></button>
+        <div id="path-detail" class="details open">
+          <div class="row" tabindex="0"><label>Amp</label><span class="value">3.0 <span class="unit">mm</span></span></div>
+          <div class="row" tabindex="0"><label>Wave</label><span class="value">20 <span class="unit">mm</span></span></div>
+        </div>
+      </section>
+
+      <section class="module">
+        <div class="module-title"><span class="mark">#</span> PRINT</div>
+        <div class="row" tabindex="0"><label>layers</label><span class="value">6</span></div>
+        <div class="row" tabindex="0"><label>scale</label><span class="value">1.00</span></div>
+        <div class="row" tabindex="0"><label>origin</label><span class="value">0, 0</span></div>
+        <button class="disclosure" data-target="print-advanced"><span>o</span><strong>advanced</strong><span>closed</span></button>
+        <div id="print-advanced" class="details">
+          <div class="row" tabindex="0"><label>soft join</label><span class="toggle">[x]</span></div>
+          <div class="row" tabindex="0"><label>z-hop</label><span class="value">1.2</span></div>
+        </div>
+      </section>
+    </aside>
+
+    <section class="main">
+      <div class="toolbar">
+        <span class="status">READY</span>
+        <span class="mark">|</span>
+        <span class="file">sample.svg</span>
+        <button class="btn">fit</button>
+        <div class="spacer"></div>
+        <span class="metric">6 layers</span>
+        <span class="metric">1240 pts</span>
+      </div>
+
+      <div class="canvas-wrap">
+        <div class="canvas-label">TRAJECTORY</div>
+        <svg class="trajectory" viewBox="0 0 900 520" aria-label="trajectory preview">
+          <defs>
+            <filter id="soften"><feGaussianBlur stdDeviation=".12"/></filter>
+          </defs>
+          <line x1="95" y1="430" x2="770" y2="430" stroke="rgba(16,14,9,.35)" stroke-width="1" stroke-dasharray="5 6"/>
+          <line x1="115" y1="450" x2="115" y2="85" stroke="rgba(16,14,9,.35)" stroke-width="1" stroke-dasharray="5 6"/>
+          <text x="780" y="433" fill="#AA2A2A" font-size="11">X</text>
+          <text x="110" y="80" fill="#1C6E45" font-size="11">Y</text>
+          <text x="155" y="110" fill="#6A6762" font-size="10">o | | |</text>
+          <g fill="none" stroke-linecap="round" filter="url(#soften)">
+            <path d="M150 338 C250 190 330 410 440 270 S620 130 725 274" stroke="#1D64B4" stroke-width="2.8"/>
+            <path d="M148 321 C252 174 334 392 444 252 S626 112 729 254" stroke="#286DB8" stroke-width="2.6"/>
+            <path d="M146 304 C254 158 338 374 448 234 S632 96 733 234" stroke="#416FB0" stroke-width="2.5"/>
+            <path d="M144 287 C256 142 342 356 452 216 S638 82 737 214" stroke="#6B669A" stroke-width="2.4"/>
+            <path d="M142 270 C258 126 346 338 456 198 S644 68 741 194" stroke="#955B72" stroke-width="2.3"/>
+            <path d="M140 253 C260 110 350 320 460 180 S650 54 745 174" stroke="#B84F22" stroke-width="2.2"/>
+          </g>
+          <path d="M146 304 C254 158 338 374 448 234 S632 96 733 234" stroke="#4F46E5" stroke-width="1.2" fill="none" stroke-dasharray="4 5"/>
+          <rect x="454" y="228" width="12" height="12" fill="#4F46E5" stroke="#F7F5F0" stroke-width="3" transform="rotate(45 460 234)"/>
+          <text x="472" y="228" fill="#6A6762" font-size="10">keyframe</text>
+        </svg>
+        <div class="timeline">
+          <span>extruder</span>
+          <div class="track"><span class="diamond"></span></div>
+          <span>38%</span>
+        </div>
+        <div class="gizmo">X Y Z</div>
+      </div>
+
+      <section class="bottom">
+        <div class="pane">
+          <div class="pane-head"><span><span class="mark">#</span> CENTER / SCALE</span></div>
+          <div class="pane-body mini-grid">
+            <div class="pad" tabindex="0"></div>
+            <div class="kv">
+              <span>scale <strong>1.00</strong></span>
+              <span>origin <strong>0,0</strong></span>
+              <span>focus <strong>&gt; C</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><span><span class="mark">o</span> LOCAL WAVE</span><span>N/T</span></div>
+          <div class="pane-body">
+            <div class="wave-box">
+              <span class="axis-n">N</span>
+              <span class="axis-t">T</span>
+              <svg viewBox="0 0 360 145" width="100%" height="100%">
+                <line x1="26" y1="72" x2="330" y2="72" stroke="#B84F22" stroke-width="1"/>
+                <line x1="180" y1="18" x2="180" y2="126" stroke="#1D64B4" stroke-width="1"/>
+                <path d="M45 72 C80 20 120 20 154 72 S226 124 262 72 S318 22 336 72" fill="none" stroke="#100E09" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><span><span class="mark">&gt;</span> G-CODE</span><button class="btn primary">EXPORT</button></div>
+          <div class="pane-body">
+            <div class="diag"><span>o diagnostics</span><span class="bar"></span><span>ready</span></div>
+            <div class="code">G21 ; mm
+G90 ; absolute
+G1 Z20 F1500
+G1 X12.4 Y40.2 Z1.0 E0.04
+G1 X15.8 Y42.9 E0.08
+...</div>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <aside class="side right">
+      <section class="module">
+        <div class="module-title"><span class="mark">#</span> N AXIS</div>
+        <div class="slider">
+          <div class="slider-head"><label>Amp</label><strong style="color:var(--n)">3.0</strong></div>
+          <div class="range" style="--w:48%;--c:var(--n)"><span></span><i></i></div>
+        </div>
+        <div class="slider">
+          <div class="slider-head"><label>Wave</label><strong style="color:var(--n)">20</strong></div>
+          <div class="range" style="--w:62%;--c:var(--n)"><span></span><i></i></div>
+        </div>
+      </section>
+      <section class="module">
+        <div class="module-title"><span class="mark">#</span> T AXIS</div>
+        <div class="slider">
+          <div class="slider-head"><label>Amp</label><strong style="color:var(--t)">2.0</strong></div>
+          <div class="range" style="--w:36%;--c:var(--t)"><span></span><i></i></div>
+        </div>
+        <div class="slider">
+          <div class="slider-head"><label>Wave</label><strong style="color:var(--t)">18</strong></div>
+          <div class="range" style="--w:54%;--c:var(--t)"><span></span><i></i></div>
+        </div>
+      </section>
+      <section class="module">
+        <div class="module-title"><span class="mark">|</span> PHASE</div>
+        <div class="slider">
+          <div class="slider-head"><label>delta</label><strong>90°</strong></div>
+          <div class="range" style="--w:50%"><span></span><i></i></div>
+        </div>
+        <button class="disclosure" data-target="phase-advanced"><span>o</span><strong>advanced</strong><span>closed</span></button>
+        <div id="phase-advanced" class="details">
+          <div class="row" tabindex="0"><label>per layer</label><span class="value">12°</span></div>
+        </div>
+      </section>
+      <section class="module">
+        <div class="module-title"><span class="mark">#</span> PRESETS</div>
+        <div class="presets">
+          <button class="preset" aria-label="preset one">~</button>
+          <button class="preset" aria-label="preset two">∞</button>
+          <button class="preset" aria-label="preset three">8</button>
+          <button class="preset" aria-label="preset four">o</button>
+          <button class="preset" aria-label="preset five">S</button>
+          <button class="preset" aria-label="preset six">--</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <script>
+    document.querySelectorAll("[data-target]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const target = document.getElementById(button.dataset.target);
+        if (!target) return;
+        target.classList.toggle("open");
+        const state = target.classList.contains("open") ? "open" : "closed";
+        button.lastElementChild.textContent = state;
+      });
+    });
+  </script>
+</body>
+</html>

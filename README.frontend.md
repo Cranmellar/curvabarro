@@ -1,5 +1,7 @@
 # Barrocode: orientaciones gráficas y UI
 
+> **Estado: dirección exploratoria, no es la guía vigente.** La dirección visual descrita en este documento aún no fue adoptada por el código. La UI actual sigue la estética "Swiss warm-paper" definida en `src/index.css` y [CLAUDE.md](CLAUDE.md). No migrar la interfaz hacia este documento sin instrucción explícita del usuario. Ver [frontend.md](frontend.md) para la versión en inglés.
+
 Este documento define una dirección visual para la interfaz de **barrocode**. No es una especificación cerrada de pantallas, sino una guía de criterio para diseñar una UI mínima, técnica y reconocible.
 
 ## Idea central

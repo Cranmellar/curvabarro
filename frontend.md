@@ -1,5 +1,7 @@
 # Frontend instructions for Claude Code: barrocode
 
+> **Status: exploratory direction, not the current guideline.** The visual direction described here has not been adopted by the codebase. The current UI follows the "Swiss warm-paper" aesthetic described in `src/index.css` and [CLAUDE.md](CLAUDE.md). Do not migrate the UI toward this document without an explicit instruction from the user. See [README.frontend.md](README.frontend.md) for the Spanish version of this document.
+
 Build the frontend for **barrocode** as a minimal technical interface inspired by CLI installation panels, especially the `claude-mem install` flow. The UI should feel like a light-code graphical instrument: sparse, precise, text-first, and structured around process state, but not visually identical to a code terminal.
 
 ## Visual Direction

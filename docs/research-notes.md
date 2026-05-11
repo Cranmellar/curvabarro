@@ -1,6 +1,8 @@
-# Pendientes
+# Notas de investigación
 
-Notas abiertas de diseño, fabricación y UI para BarroCode.
+Notas abiertas de diseño, fabricación y UI para BarroCode. Ideas en exploración, sin priorizar ni comprometerse a ejecución.
+
+> Para el backlog accionable y priorizado de tickets listos para ejecutar, ver [../pendientes.md](../pendientes.md).
 
 ## Interacción Y UI
 
