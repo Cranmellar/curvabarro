@@ -119,7 +119,6 @@ html, body, #root { height: 100%; overflow: hidden; }
 .app-banner {
   flex-shrink: 0;
   padding: 14px 16px 10px;
-  border-bottom: 2px solid var(--ink);
 }
 .app-banner img {
   width: 100%;
@@ -273,10 +272,8 @@ html, body, #root { height: 100%; overflow: hidden; }
 /* ── Sections — Swiss chapter structure ──────────────────────────────────── */
 .section {
   padding: 0 0 6px;
-  border-top: 1.5px solid var(--ink);  /* chapter rule */
   margin-top: 0;
 }
-.section:first-child { border-top: none; }
 .section:last-child { padding-bottom: 10px; }
 
 .section-title {
@@ -363,7 +360,6 @@ html, body, #root { height: 100%; overflow: hidden; }
   text-transform: uppercase;
   letter-spacing: 0.22em;
   color: var(--ink);
-  border-bottom: 2px solid var(--ink);   /* strong Swiss rule */
 }
 
 /* ── Buttons — rectangular, border-based ─────────────────────────────────── */
