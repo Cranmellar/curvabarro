@@ -35,6 +35,7 @@ interface Props {
   gcodeFilename: string;
   selectedKfId: string | null;
   onKfSelect: (id: string | null) => void;
+  onAddKeyframe: () => void;
 }
 
 interface View3D {
@@ -98,7 +99,7 @@ export function Preview2D({
   timelineProgress, onTimelineChange,
   keyframes, onKeyframesChange,
   centerTab, onTabChange, gcode, gcodeFilename,
-  selectedKfId, onKfSelect,
+  selectedKfId, onKfSelect, onAddKeyframe,
 }: Props) {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const topdownRef  = useRef<HTMLCanvasElement>(null);
@@ -238,8 +239,9 @@ export function Preview2D({
       const r  = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 0.65;
       const step = r > 80 ? 20 : r > 30 ? 10 : 5;
       ctx.save();
-      ctx.strokeStyle = 'rgba(16,14,9,0.08)';
-      ctx.lineWidth = 0.75;
+      ctx.strokeStyle = 'rgba(100, 96, 180, 0.22)';
+      ctx.lineWidth = 0.9;
+      ctx.setLineDash([8, 6]);
       for (let gx = Math.floor((cx - r) / step) * step; gx <= cx + r; gx += step) {
         ctx.beginPath();
         const [x0, y0] = toScreen(gx, cy - r, 0);
@@ -252,6 +254,7 @@ export function Preview2D({
         const [x1, y1] = toScreen(cx + r, gy, 0);
         ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
       }
+      ctx.setLineDash([]);
       ctx.restore();
     }
 
@@ -297,7 +300,7 @@ export function Preview2D({
       ctx.save();
       ctx.strokeStyle = layerColor(li, numLayers);
       ctx.globalAlpha = alpha;
-      ctx.lineWidth   = Math.max(0.8, 3.2 / Math.sqrt(Math.max(scale, 0.05)));
+      ctx.lineWidth   = Math.max(1.5, 5.5 / Math.sqrt(Math.max(scale, 0.05)));
       ctx.lineJoin    = 'round';
       ctx.lineCap     = 'round';
 
@@ -358,10 +361,10 @@ export function Preview2D({
             [mxX, mxY, editLayer.z], [mnX, mxY, editLayer.z],
           ];
           ctx.save();
-          ctx.globalAlpha = 0.28;
+          ctx.globalAlpha = 0.38;
           ctx.strokeStyle = '#4F46E5';
-          ctx.lineWidth   = 1;
-          ctx.setLineDash([4, 4]);
+          ctx.lineWidth   = 1.8;
+          ctx.setLineDash([9, 5]);
           ctx.beginPath();
           corners.forEach(([x, y, z], i) => {
             const [sx, sy] = toScreen(x, y, z);
@@ -485,6 +488,9 @@ export function Preview2D({
         const [kx, ky] = toScreen(kfPt.x, kfPt.y, kfPt.z);
         const isSelected = kf.id === selectedKfId;
         const kfSize = isSelected ? 7 : 5;
+        const color  = isSelected ? '#6366F1' : layerColor(kfPt.layerIndex, numLayers);
+
+        // Diamond
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(kx,          ky - kfSize);
@@ -492,10 +498,37 @@ export function Preview2D({
         ctx.lineTo(kx,          ky + kfSize);
         ctx.lineTo(kx - kfSize, ky);
         ctx.closePath();
-        ctx.fillStyle   = isSelected ? '#6366F1' : layerColor(kfPt.layerIndex, numLayers);
+        ctx.fillStyle   = color;
         ctx.strokeStyle = '#fff';
         ctx.lineWidth   = 2;
         ctx.fill(); ctx.stroke();
+        ctx.restore();
+
+        // Tag — pentagon pointing left, attached to diamond right tip
+        const TAG_H = 13, TAG_W = 28, TAG_R = 3, NOTCH = 5;
+        const tx = kx + kfSize + 2;
+        const ty = ky - TAG_H / 2;
+        ctx.save();
+        ctx.globalAlpha = isSelected ? 1 : 0.9;
+        ctx.fillStyle   = color;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth   = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(tx,                ky);
+        ctx.lineTo(tx + NOTCH,        ty);
+        ctx.lineTo(tx + TAG_W - TAG_R, ty);
+        ctx.arcTo(tx + TAG_W, ty,          tx + TAG_W, ty + TAG_R,          TAG_R);
+        ctx.arcTo(tx + TAG_W, ty + TAG_H,  tx + TAG_W - TAG_R, ty + TAG_H,  TAG_R);
+        ctx.lineTo(tx + NOTCH,        ty + TAG_H);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.font      = `${isSelected ? 700 : 600} 8px GSCode, monospace`;
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${Math.round(kf.t * 100)}%`, tx + NOTCH + (TAG_W - NOTCH) / 2, ky);
         ctx.restore();
       }
     }
@@ -530,8 +563,53 @@ export function Preview2D({
       ctx.save();
       ctx.font = '700 8px GSCode, monospace';
       ctx.fillStyle = 'rgba(16,14,9,0.5)';
-      ctx.fillText(`Z ${pt.z.toFixed(1)}`, ex + 9, ey - 4);
+      ctx.fillText(`Z ${pt.z.toFixed(1)}`, ex + 9, ey + 14);
       ctx.restore();
+
+      // Add-keyframe hint tag — pentagon pointing left, upper-right of extruder
+      {
+        const TAG_H = 16, TAG_W = 34, TAG_R = 4, NOTCH = 6;
+        const tx = ex + 8;
+        const ty = ey - TAG_H - 6;
+        const tcy = ty + TAG_H / 2;
+        ctx.save();
+        ctx.globalAlpha = 0.82;
+        ctx.fillStyle   = 'rgba(16,14,9,0.78)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+        ctx.lineWidth   = 1;
+        ctx.beginPath();
+        ctx.moveTo(tx,                 tcy);
+        ctx.lineTo(tx + NOTCH,         ty);
+        ctx.lineTo(tx + TAG_W - TAG_R, ty);
+        ctx.arcTo(tx + TAG_W, ty,          tx + TAG_W, ty + TAG_R,         TAG_R);
+        ctx.arcTo(tx + TAG_W, ty + TAG_H,  tx + TAG_W - TAG_R, ty + TAG_H, TAG_R);
+        ctx.lineTo(tx + NOTCH,         ty + TAG_H);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        // Diamond glyph
+        const mx = tx + NOTCH + 7;
+        const ds = 4;
+        ctx.fillStyle = layerColor(pt.layerIndex, numLayers);
+        ctx.beginPath();
+        ctx.moveTo(mx,      tcy - ds);
+        ctx.lineTo(mx + ds, tcy);
+        ctx.lineTo(mx,      tcy + ds);
+        ctx.lineTo(mx - ds, tcy);
+        ctx.closePath();
+        ctx.fill();
+        // Plus glyph
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth   = 1.6;
+        ctx.lineCap     = 'round';
+        const px2 = tx + NOTCH + 20;
+        ctx.beginPath();
+        ctx.moveTo(px2 - 3.5, tcy); ctx.lineTo(px2 + 3.5, tcy);
+        ctx.moveTo(px2, tcy - 3.5); ctx.lineTo(px2, tcy + 3.5);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     // SVG centerlines (no wave layers yet)
@@ -807,6 +885,24 @@ export function Preview2D({
               value={timelineProgress}
               onChange={e => onTimelineChange(parseFloat(e.target.value))}
             />
+
+            {/* Add-keyframe tag floating above the scrub thumb */}
+            {(() => {
+              const li = Math.min(numLayers - 1, Math.floor(timelineProgress * numLayers));
+              const dColor = layerColor(li, numLayers);
+              return (
+                <button
+                  className="timeline-thumb-tag"
+                  style={{ left: `calc(${timelineProgress * 100}% + ${((0.5 - timelineProgress) * 14).toFixed(2)}px)` }}
+                  onClick={onAddKeyframe}
+                  title="Añadir keyframe aquí"
+                >
+                  <span className="ttt-diamond" style={{ background: dColor }} />
+                  <span className="ttt-plus">+</span>
+                </button>
+              );
+            })()}
+
             {keyframes.map(kf => {
               const kfLayerIdx = Math.round(kf.t * Math.max(0, numLayers - 1));
               const kfColor = kf.id === selectedKfId
