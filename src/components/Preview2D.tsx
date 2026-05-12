@@ -12,7 +12,7 @@
  * Los keyframes se marcan como diamantes en la barra de tiempo.
  */
 
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import type { SampledPath, WaveLayer, PrintParams, SVGViewBox, WaveKeyframe } from '../types';
 import { svgToMM } from '../lib/waveGenerator';
 import { buildArcPath, findCrossings, hopAtArc } from '../lib/hopUtils';
@@ -65,23 +65,33 @@ function project(x: number, y: number, z: number, az: number, el: number): [numb
 
 interface FlatPoint { x: number; y: number; z: number; layerIndex: number }
 
+interface LayerGeo {
+  allMm: { x: number; y: number }[];
+  arcPath: ReturnType<typeof buildArcPath>;
+  crossings: ReturnType<typeof findCrossings>;
+}
+
 function toMM(p: { x: number; y: number }, params: PrintParams, svgH: number) {
   return svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
 }
 
-function flattenPoints(layers: WaveLayer[], params: PrintParams, svgH: number): FlatPoint[] {
+function buildLayerGeo(layer: WaveLayer, params: PrintParams, svgH: number): LayerGeo {
+  const allMm = layer.paths.flatMap(path => path.map(p => toMM(p, params, svgH)));
+  const arcPath = buildArcPath(allMm);
+  const crossings = params.zHopHeight > 0 ? findCrossings(arcPath) : [];
+  return { allMm, arcPath, crossings };
+}
+
+function flattenPoints(layers: WaveLayer[], geo: LayerGeo[], zHopHeight: number): FlatPoint[] {
   const pts: FlatPoint[] = [];
-  for (const layer of layers) {
-    // Scale is already baked into wave points by generateWaveLayers.
-    // We only need arc lengths for z-hop.
-    const allMm = layer.paths.flatMap(path => path.map(p => toMM(p, params, svgH)));
-    const arcPath = buildArcPath(allMm);
-    const crossings = params.zHopHeight > 0 ? findCrossings(arcPath) : [];
+  for (let li = 0; li < layers.length; li++) {
+    const layer = layers[li];
+    const { arcPath, crossings } = geo[li];
     let idx = 0;
     for (const path of layer.paths) {
-      for (const _p of path) {
+      for (let i = 0; i < path.length; i++) {
         const { x, y, arc } = arcPath[idx];
-        const hop = hopAtArc(arc, crossings, params.zHopHeight);
+        const hop = hopAtArc(arc, crossings, zHopHeight);
         pts.push({ x, y, z: layer.z + hop, layerIndex: layer.index });
         idx++;
       }
@@ -126,6 +136,14 @@ export function Preview2D({
 
   const svgH = viewBox?.height ?? 200;
 
+  // Per-layer geometry cache — recomputed only when layers/projection params change,
+  // not on every camera move.
+  const layerGeo = useMemo<LayerGeo[]>(
+    () => layers.map(layer => buildLayerGeo(layer, params, svgH)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layers, params.scaleFactor, params.originX, params.originY, params.flipY, params.zHopHeight, svgH],
+  );
+
   // ── Keyframe drag (window-level so it works outside the track) ───────────
   useEffect(() => {
     function onMove(e: MouseEvent) {
@@ -168,7 +186,7 @@ export function Preview2D({
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0) return;
 
-    const flat = flattenPoints(layers, params, svgH);
+    const flat = flattenPoints(layers, layerGeo, params.zHopHeight);
     if (flat.length === 0) return;
 
     const projected = flat.map(p => project(p.x, p.y, p.z, view.azimuth, view.elevation));
@@ -187,7 +205,7 @@ export function Preview2D({
       offsetX: rect.width  / 2 - ((minX + maxX) / 2) * scale,
       offsetY: rect.height / 2 - ((minY + maxY) / 2) * scale,
     }));
-  }, [layers, params, svgH, view.azimuth, view.elevation]);
+  }, [layers, layerGeo, params.zHopHeight, view.azimuth, view.elevation]);
 
   const prevLayerCount = useRef(0);
   useEffect(() => {
@@ -228,7 +246,7 @@ export function Preview2D({
       return [offsetX + px * scale, offsetY + py * scale];
     }
 
-    const flat = flattenPoints(layers, params, svgH);
+    const flat = flattenPoints(layers, layerGeo, params.zHopHeight);
     const numLayers = layers.length;
 
     // Ground grid
@@ -290,12 +308,7 @@ export function Preview2D({
     for (let li = 0; li < numLayers; li++) {
       const layer = layers[li];
       const alpha = 0.60 + (li / Math.max(1, numLayers - 1)) * 0.40;
-
-      // Pre-compute mm points + z-hop for this layer (scale pre-applied in wave data)
-      const allMm = layer.paths.flatMap(svgPts =>
-        svgPts.map(p => svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH)));
-      const arcPath = buildArcPath(allMm);
-      const crossings = params.zHopHeight > 0 ? findCrossings(arcPath) : [];
+      const { arcPath, crossings } = layerGeo[li];
 
       ctx.save();
       ctx.strokeStyle = layerColor(li, numLayers);
@@ -328,10 +341,7 @@ export function Preview2D({
         const editLi = Math.min(numLayers - 1,
           Math.round(selKf.t * Math.max(0, numLayers - 1)));
         const editLayer = layers[editLi];
-        const editAllMm = editLayer.paths.flatMap(svgPts =>
-          svgPts.map(p => svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH)));
-        const editArcPath = buildArcPath(editAllMm);
-        const editCrossings = params.zHopHeight > 0 ? findCrossings(editArcPath) : [];
+        const { allMm: editAllMm, arcPath: editArcPath, crossings: editCrossings } = layerGeo[editLi];
 
         ctx.save();
         ctx.strokeStyle = '#4F46E5';
@@ -381,12 +391,16 @@ export function Preview2D({
     if (!params.softJoin && numLayers > 0) {
       for (let li = 0; li < numLayers; li++) {
         const layer = layers[li];
+        const { allMm } = layerGeo[li];
 
-        // Convert all paths for this layer to mm-space
-        const mmPaths = layer.paths.map(path =>
-          path.map(p => toMM(p, params, svgH)),
-        );
-        const flatMm = mmPaths.flat();
+        // Reconstruct per-path slices from the flat allMm array
+        const mmPaths: { x: number; y: number }[][] = [];
+        let mmIdx = 0;
+        for (const path of layer.paths) {
+          mmPaths.push(allMm.slice(mmIdx, mmIdx + path.length));
+          mmIdx += path.length;
+        }
+        const flatMm = allMm;
         if (flatMm.length === 0) continue;
         const centroid = computeCentroid(flatMm);
 
@@ -425,7 +439,13 @@ export function Preview2D({
         // Between-layer: from last path end of layer li → first path start of layer li+1
         if (li < numLayers - 1) {
           const nextLayer = layers[li + 1];
-          const nextMmPaths = nextLayer.paths.map(path => path.map(p => toMM(p, params, svgH)));
+          const { allMm: nextAllMm } = layerGeo[li + 1];
+          const nextMmPaths: { x: number; y: number }[][] = [];
+          let nIdx = 0;
+          for (const path of nextLayer.paths) {
+            nextMmPaths.push(nextAllMm.slice(nIdx, nIdx + path.length));
+            nIdx += path.length;
+          }
           const lastCurPath = mmPaths[mmPaths.length - 1];
           const firstNextPath = nextMmPaths[0];
           if (lastCurPath?.length && firstNextPath?.length) {
@@ -729,7 +749,7 @@ export function Preview2D({
       ctx.restore();
     }
 
-  }, [sampledPaths, layers, params, viewBox, view, timelineProgress, svgH, keyframes, selectedKfId]);
+  }, [sampledPaths, layers, layerGeo, params, viewBox, view, timelineProgress, svgH, keyframes, selectedKfId]);
 
   // ── Top-down mini diagram (G-code tab) ───────────────────────────────────
   useEffect(() => {
