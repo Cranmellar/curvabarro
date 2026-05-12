@@ -220,6 +220,8 @@ export function Preview2D({
     const W = rect.width, H = rect.height;
     const { azimuth, elevation, scale, offsetX, offsetY } = view;
 
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+
     ctx.fillStyle = '#EDEDF2';
     ctx.fillRect(0, 0, W, H);
 
@@ -298,7 +300,7 @@ export function Preview2D({
       const crossings = params.zHopHeight > 0 ? findCrossings(arcPath) : [];
 
       ctx.save();
-      ctx.strokeStyle = layerColor(li, numLayers);
+      ctx.strokeStyle = accent;
       ctx.globalAlpha = alpha;
       ctx.lineWidth   = Math.max(1.5, 5.5 / Math.sqrt(Math.max(scale, 0.05)));
       ctx.lineJoin    = 'round';
@@ -334,7 +336,7 @@ export function Preview2D({
         const editCrossings = params.zHopHeight > 0 ? findCrossings(editArcPath) : [];
 
         ctx.save();
-        ctx.strokeStyle = '#4F46E5';
+        ctx.strokeStyle = accent;
         ctx.globalAlpha = 0.55;
         ctx.lineWidth   = Math.max(2, 5.5 / Math.sqrt(Math.max(scale, 0.05)));
         ctx.lineJoin    = 'round'; ctx.lineCap = 'round';
@@ -362,7 +364,7 @@ export function Preview2D({
           ];
           ctx.save();
           ctx.globalAlpha = 0.38;
-          ctx.strokeStyle = '#4F46E5';
+          ctx.strokeStyle = accent;
           ctx.lineWidth   = 1.8;
           ctx.setLineDash([9, 5]);
           ctx.beginPath();
@@ -470,7 +472,7 @@ export function Preview2D({
         const firstB = b[0];
         const mmA = svgToMM(lastA,  params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
         const mmB = svgToMM(firstB, params.scaleFactor, params.originX, params.originY, params.flipY, svgH);
-        ctx.strokeStyle = layerColor(li, numLayers, 0.7);
+        ctx.strokeStyle = accent;
         ctx.beginPath();
         const [ax, ay] = toScreen(mmA.x, mmA.y, layer.z);
         const [bx, by] = toScreen(mmB.x, mmB.y, next.z);
@@ -488,7 +490,7 @@ export function Preview2D({
         const [kx, ky] = toScreen(kfPt.x, kfPt.y, kfPt.z);
         const isSelected = kf.id === selectedKfId;
         const kfSize = isSelected ? 7 : 5;
-        const color  = isSelected ? '#6366F1' : layerColor(kfPt.layerIndex, numLayers);
+        const color  = accent;
 
         // Diamond
         ctx.save();
@@ -554,7 +556,7 @@ export function Preview2D({
       ctx.lineTo(ex,     ey + 8);
       ctx.lineTo(ex - 8, ey);
       ctx.closePath();
-      ctx.fillStyle   = layerColor(pt.layerIndex, numLayers);
+      ctx.fillStyle   = accent;
       ctx.strokeStyle = '#fff';
       ctx.lineWidth   = 2.5;
       ctx.fill(); ctx.stroke();
@@ -591,7 +593,7 @@ export function Preview2D({
         // Diamond glyph
         const mx = tx + NOTCH + 7;
         const ds = 4;
-        ctx.fillStyle = layerColor(pt.layerIndex, numLayers);
+        ctx.fillStyle = accent;
         ctx.beginPath();
         ctx.moveTo(mx,      tcy - ds);
         ctx.lineTo(mx + ds, tcy);
@@ -646,8 +648,10 @@ export function Preview2D({
       const step = numLayers <= 8 ? 1 : Math.ceil(numLayers / 8);
       let ly = 12;
       for (let li = 0; li < numLayers; li += step) {
-        ctx.fillStyle = layerColor(li, numLayers);
+        ctx.globalAlpha = 0.40 + (li / Math.max(1, numLayers - 1)) * 0.55;
+        ctx.fillStyle = accent;
         ctx.fillRect(10, ly, 6, 6);
+        ctx.globalAlpha = 1;
         ctx.fillStyle = 'rgba(16,14,9,0.45)';
         ctx.textAlign = 'left';
         ctx.fillText(`${li + 1}`, 20, ly + 5.5);
@@ -743,6 +747,8 @@ export function Preview2D({
     ctx.fillStyle = '#F5F5F9';
     ctx.fillRect(0, 0, W, H);
 
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+
     const pad = 10;
     const allPts = layers.flatMap(l =>
       l.paths.flat().map(p => svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH)),
@@ -761,7 +767,8 @@ export function Preview2D({
     ];
 
     for (let li = 0; li < layers.length; li++) {
-      ctx.strokeStyle = layerColor(li, layers.length, 0.75);
+      ctx.strokeStyle = accent;
+      ctx.globalAlpha = 0.35 + (li / Math.max(1, layers.length - 1)) * 0.50;
       ctx.lineWidth = 0.9;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
@@ -888,8 +895,7 @@ export function Preview2D({
 
             {/* Add-keyframe tag floating above the scrub thumb */}
             {(() => {
-              const li = Math.min(numLayers - 1, Math.floor(timelineProgress * numLayers));
-              const dColor = layerColor(li, numLayers);
+              const dColor = 'var(--accent)';
               return (
                 <button
                   className="timeline-thumb-tag"
@@ -905,9 +911,7 @@ export function Preview2D({
 
             {keyframes.map(kf => {
               const kfLayerIdx = Math.round(kf.t * Math.max(0, numLayers - 1));
-              const kfColor = kf.id === selectedKfId
-                ? 'var(--accent)'
-                : layerColor(kfLayerIdx, numLayers);
+              const kfColor = 'var(--accent)';
               return (
                 <div
                   key={kf.id}
