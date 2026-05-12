@@ -509,7 +509,7 @@ export function Preview2D({
         const tx = kx + kfSize + 2;
         const ty = ky - TAG_H / 2;
         ctx.save();
-        ctx.globalAlpha = isSelected ? 1 : 0.9;
+        ctx.globalAlpha = isSelected ? 0.72 : 0.52;
         ctx.fillStyle   = color;
         ctx.strokeStyle = '#fff';
         ctx.lineWidth   = 1.2;
