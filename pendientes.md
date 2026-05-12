@@ -10,21 +10,21 @@ Backlog de cambios atómicos para BarroCode, con propuesta priorizada de ejecuci
 
 ### Bugs
 
-- [ ] **Drag-and-drop de SVG no resuelve** — actualmente no funciona; el `onDrop` está cableado en `App.tsx` pero hay un comportamiento que lo está rompiendo.
-- [ ] **Scrollwheel no actualiza el valor numérico visible** — al tener un field seleccionado y mover la rueda, los parámetros cambian en el visualizador, pero el número en el `NumInput` no se refresca mientras se gira.
+- [X] **Drag-and-drop de SVG no resuelve** — actualmente no funciona; el `onDrop` está cableado en `App.tsx` pero hay un comportamiento que lo está rompiendo.
+- [x] **Scrollwheel no actualiza el valor numérico visible** — al tener un field seleccionado y mover la rueda, los parámetros cambian en el visualizador, pero el número en el `NumInput` no se refresca mientras se gira.
 
 ### UX — controles
 
-- [ ] **Pivot drag en el visualizador** — permitir que el punto que corresponde al centro de escala se pueda desplazar arrastrando con el mouse en el viewport 3D.
-- [ ] **Shift = ajuste fino** — agregar la opción de mantener Shift apretado para cambios muy leves al variar cualquier parámetro. Rueda = cambio grueso, Shift+rueda = cambio fino.
-- [ ] **Pivot fields con paso más grueso** — al variar el centro de pivote, el desplazamiento por tick del wheel debiese ser mayor, para ubicar más rápidamente el punto donde quiero.
-- [ ] **"Añadir keyframe aquí" → "OK" cuando hay keyframe seleccionada** — cuando se está trabajando con una keyframe existente, el botón debe cambiar a un OK para confirmar y evitar crear 2 keyframes en el mismo punto.
+- [x] **Pivot drag en el visualizador** — permitir que el punto que corresponde al centro de escala se pueda desplazar arrastrando con el mouse en el viewport 3D.
+- [x] **Shift = ajuste fino** — agregar la opción de mantener Shift apretado para cambios muy leves al variar cualquier parámetro. Rueda = cambio grueso, Shift+rueda = cambio fino.
+- [x] **Pivot fields con paso más grueso** — al variar el centro de pivote, el desplazamiento por tick del wheel debiese ser mayor, para ubicar más rápidamente el punto donde quiero.
+- [x] **"Añadir keyframe aquí" → "OK" cuando hay keyframe seleccionada** — cuando se está trabajando con una keyframe existente, el botón debe cambiar a un OK para confirmar y evitar crear 2 keyframes en el mismo punto.
 
 ### UX — visualización
 
-- [ ] **Estimación de tiempo en el header del visualizador** — a la izquierda del contador de capas y puntos, agregar una estimación del tiempo total considerando velocidad y distancia total de la trayectoria.
-- [ ] **Cache periódico del SVG cargado** — guardar el estado del SVG en localStorage cada N segundos para restaurarlo en caso de cierre abrupto del navegador.
-- [ ] **Optimizar rendering con capas altas o muchos keyframes** — el `useEffect([parsedSVG, params, keyframes])` actual recompila todo en cada cambio; con muchas capas o keyframes la edición se siente lenta.
+- [X] **Estimación de tiempo en el header del visualizador** — a la izquierda del contador de capas y puntos, agregar una estimación del tiempo total considerando velocidad y distancia total de la trayectoria.
+- [X] **Cache periódico del SVG cargado** — guardar el estado del SVG en localStorage cada N segundos para restaurarlo en caso de cierre abrupto del navegador.
+- [] **Optimizar rendering con capas altas o muchos keyframes** — el `useEffect([parsedSVG, params, keyframes])` actual recompila todo en cada cambio; con muchas capas o keyframes la edición se siente lenta.
 
 ### UI — layout y estilo
 
