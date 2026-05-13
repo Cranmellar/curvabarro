@@ -63,6 +63,24 @@ function project(x: number, y: number, z: number, az: number, el: number): [numb
   return [rx, ry * Math.sin(E) - z * Math.cos(E)];
 }
 
+// Safe min/max over an array of any size — avoids the V8 spread-argument
+// stack-overflow that kills Math.min(...largeArray) above ~65 K elements.
+function boundsOf<T>(
+  arr: T[],
+  x: (v: T) => number,
+  y: (v: T) => number,
+): { minX: number; maxX: number; minY: number; maxY: number } {
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const v of arr) {
+    const vx = x(v), vy = y(v);
+    if (vx < minX) minX = vx;
+    if (vx > maxX) maxX = vx;
+    if (vy < minY) minY = vy;
+    if (vy > maxY) maxY = vy;
+  }
+  return { minX, maxX, minY, maxY };
+}
+
 interface FlatPoint { x: number; y: number; z: number; layerIndex: number }
 
 interface LayerGeo {
@@ -78,11 +96,18 @@ function toMM(p: { x: number; y: number }, params: PrintParams, svgH: number) {
 function buildLayerGeo(layer: WaveLayer, params: PrintParams, svgH: number): LayerGeo {
   const allMm = layer.paths.flatMap(path => path.map(p => toMM(p, params, svgH)));
   const arcPath = buildArcPath(allMm);
-  const crossings = params.zHopHeight > 0 ? findCrossings(arcPath) : [];
+  const crossings = params.zHopHeight > 0
+    ? findCrossings(arcPath, Math.max(params.hopRadius * 3, 2))
+    : [];
   return { allMm, arcPath, crossings };
 }
 
-function flattenPoints(layers: WaveLayer[], geo: LayerGeo[], zHopHeight: number): FlatPoint[] {
+function flattenPoints(
+  layers: WaveLayer[],
+  geo: LayerGeo[],
+  zHopHeight: number,
+  hopRadius: number,
+): FlatPoint[] {
   const pts: FlatPoint[] = [];
   for (let li = 0; li < layers.length; li++) {
     const layer = layers[li];
@@ -91,7 +116,7 @@ function flattenPoints(layers: WaveLayer[], geo: LayerGeo[], zHopHeight: number)
     for (const path of layer.paths) {
       for (let i = 0; i < path.length; i++) {
         const { x, y, arc } = arcPath[idx];
-        const hop = hopAtArc(arc, crossings, zHopHeight);
+        const hop = hopAtArc(arc, crossings, zHopHeight, hopRadius);
         pts.push({ x, y, z: layer.z + hop, layerIndex: layer.index });
         idx++;
       }
@@ -141,7 +166,7 @@ export function Preview2D({
   const layerGeo = useMemo<LayerGeo[]>(
     () => layers.map(layer => buildLayerGeo(layer, params, svgH)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [layers, params.scaleFactor, params.originX, params.originY, params.flipY, params.zHopHeight, svgH],
+    [layers, params.scaleFactor, params.originX, params.originY, params.flipY, params.zHopHeight, params.hopRadius, svgH],
   );
 
   // ── Keyframe drag (window-level so it works outside the track) ───────────
@@ -186,14 +211,11 @@ export function Preview2D({
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0) return;
 
-    const flat = flattenPoints(layers, layerGeo, params.zHopHeight);
+    const flat = flattenPoints(layers, layerGeo, params.zHopHeight, params.hopRadius);
     if (flat.length === 0) return;
 
     const projected = flat.map(p => project(p.x, p.y, p.z, view.azimuth, view.elevation));
-    const xs = projected.map(p => p[0]);
-    const ys = projected.map(p => p[1]);
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const { minX, maxX, minY, maxY } = boundsOf(projected, p => p[0], p => p[1]);
     const margin = 48;
     const scale = Math.min(
       (rect.width  - margin * 2) / (maxX - minX || 1),
@@ -246,15 +268,16 @@ export function Preview2D({
       return [offsetX + px * scale, offsetY + py * scale];
     }
 
-    const flat = flattenPoints(layers, layerGeo, params.zHopHeight);
+    const flat = flattenPoints(layers, layerGeo, params.zHopHeight, params.hopRadius);
     const numLayers = layers.length;
 
     // Ground grid
     if (flat.length > 0 && elevation > 5) {
-      const xs = flat.map(p => p.x), ys = flat.map(p => p.y);
-      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-      const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
-      const r  = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) * 0.65;
+      const { minX: flatMinX, maxX: flatMaxX, minY: flatMinY, maxY: flatMaxY } =
+        boundsOf(flat, p => p.x, p => p.y);
+      const cx = (flatMinX + flatMaxX) / 2;
+      const cy = (flatMinY + flatMaxY) / 2;
+      const r  = Math.max(flatMaxX - flatMinX, flatMaxY - flatMinY) * 0.65;
       const step = r > 80 ? 20 : r > 30 ? 10 : 5;
       ctx.save();
       ctx.strokeStyle = 'rgba(100, 96, 180, 0.22)';
@@ -323,7 +346,7 @@ export function Preview2D({
         ctx.beginPath();
         for (let i = 0; i < svgPts.length; i++) {
           const { x, y, arc } = arcPath[ptIdx];
-          const hop = hopAtArc(arc, crossings, params.zHopHeight);
+          const hop = hopAtArc(arc, crossings, params.zHopHeight, params.hopRadius);
           const [sx, sy] = toScreen(x, y, layer.z + hop);
           if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
           ptIdx++;
@@ -354,7 +377,7 @@ export function Preview2D({
           ctx.beginPath();
           for (let i = 0; i < svgPts.length; i++) {
             const { x, y, arc } = editArcPath[editPtIdx];
-            const hop = hopAtArc(arc, editCrossings, params.zHopHeight);
+            const hop = hopAtArc(arc, editCrossings, params.zHopHeight, params.hopRadius);
             const [sx, sy] = toScreen(x, y, editLayer.z + hop);
             if (i === 0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
             editPtIdx++;
@@ -363,9 +386,8 @@ export function Preview2D({
         }
         // Horizontal band: bounding-box rectangle at the edited layer's Z
         if (editAllMm.length > 0) {
-          const xs = editAllMm.map(p => p.x), ys = editAllMm.map(p => p.y);
-          const mnX = Math.min(...xs), mxX = Math.max(...xs);
-          const mnY = Math.min(...ys), mxY = Math.max(...ys);
+          const { minX: mnX, maxX: mxX, minY: mnY, maxY: mxY } =
+            boundsOf(editAllMm, p => p.x, p => p.y);
           const corners: [number,number,number][] = [
             [mnX, mnY, editLayer.z], [mxX, mnY, editLayer.z],
             [mxX, mxY, editLayer.z], [mnX, mxY, editLayer.z],
@@ -768,9 +790,7 @@ export function Preview2D({
       l.paths.flat().map(p => svgToMM(p, params.scaleFactor, params.originX, params.originY, params.flipY, svgH)),
     );
     if (allPts.length === 0) return;
-    const xs = allPts.map(p => p.x), ys = allPts.map(p => p.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs);
-    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    const { minX, maxX, minY, maxY } = boundsOf(allPts, p => p.x, p => p.y);
     const rangeX = maxX - minX || 1, rangeY = maxY - minY || 1;
     const sc = Math.min((W - pad * 2) / rangeX, (H - pad * 2) / rangeY);
     const ox = pad + ((W - pad * 2) - rangeX * sc) / 2;

@@ -56,7 +56,7 @@ function buildHeader(params: PrintParams, numLayers: number): string {
     `; Scale X / Y            : ${params.scaleX} / ${params.scaleY}`,
     `; Origin X / Y           : ${params.originX} / ${params.originY} mm`,
     `; Flip Y                 : ${params.flipY}`,
-    `; Z-hop height           : ${params.zHopHeight} mm`,
+    `; Z-hop height / radius  : ${params.zHopHeight} / ${params.hopRadius} mm`,
     `; Skirt threshold        : ${params.skirtThreshold} mm`,
     `; Print speed            : ${params.printSpeed} mm/min`,
     `; Travel speed           : ${params.travelSpeed} mm/min`,
@@ -188,7 +188,7 @@ function pathToGcode(
     if (d < 1e-6) continue;
 
     localArc += d;
-    const hop    = hopAtArc(localArc, crossings, params.zHopHeight);
+    const hop    = hopAtArc(localArc, crossings, params.zHopHeight, params.hopRadius);
     const zOscil = svgPts[i].zOffset;
     const zOut   = layerZ + zOscil + hop;
 
@@ -300,7 +300,7 @@ export function generateGcode(
     let layerCrossings: number[] = [];
     if (params.zHopHeight > 0) {
       const arcPath = buildArcPath(allLayerMm);
-      layerCrossings = findCrossings(arcPath);
+      layerCrossings = findCrossings(arcPath, Math.max(params.hopRadius * 3, 2));
       if (layerCrossings.length > 0) {
         blocks.push(`; Z-hop: ${layerCrossings.length} crossing(s) detected`);
       }

@@ -188,7 +188,7 @@ export function CenterScaleParams({ params, onChange }: Props) {
           <div className="section-title">Z-hop en cruces</div>
           <div className="slider-row">
             <div className="slider-header">
-              <span className="slider-label">Altura de arco</span>
+              <span className="slider-label">Altura de salto</span>
               <span className="slider-value" style={{ fontSize: 16 }}>
                 {params.zHopHeight.toFixed(1)}
                 <span className="slider-value-unit">mm</span>
@@ -203,9 +203,26 @@ export function CenterScaleParams({ params, onChange }: Props) {
               onChange={e => setVal('zHopHeight', parseFloat(e.target.value))}
             />
           </div>
+          <div className="slider-row">
+            <div className="slider-header">
+              <span className="slider-label">Radio de cruce</span>
+              <span className="slider-value" style={{ fontSize: 16 }}>
+                {params.hopRadius.toFixed(1)}
+                <span className="slider-value-unit">mm</span>
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0.5}
+              max={5}
+              step={0.1}
+              value={params.hopRadius}
+              onChange={e => setVal('hopRadius', parseFloat(e.target.value))}
+            />
+          </div>
           <div className="param-row" style={{ paddingTop: 0 }}>
             <label style={{ color: 'var(--muted)', fontSize: 9 }}>
-              0 = desactivado · detecta cruces de la misma capa
+              Altura 0 = desactivado · radio pequeño = salto más abrupto
             </label>
           </div>
         </div>

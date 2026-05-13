@@ -108,8 +108,11 @@ const LissajousMini = React.memo(function LissajousMini({
   }
 
   // Normalise to [0, draw] inside viewBox — keep zero-amplitude axes centred
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < xs.length; i++) {
+    if (xs[i] < minX) minX = xs[i]; if (xs[i] > maxX) maxX = xs[i];
+    if (ys[i] < minY) minY = ys[i]; if (ys[i] > maxY) maxY = ys[i];
+  }
   const rangeX = maxX - minX;
   const rangeY = maxY - minY;
 

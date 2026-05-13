@@ -67,7 +67,8 @@ const DEFAULT_PARAMS: PrintParams = {
   scaleY: 1,
   scaleUniform: true,
   // Z-hop
-  zHopHeight: 0,
+  zHopHeight: 2.5,
+  hopRadius: 1.0,
   // Concentric skirt travel
   skirtThreshold: 15,
 };

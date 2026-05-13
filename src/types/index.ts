@@ -135,6 +135,7 @@ export interface PrintParams {
 
   // ── Z-hop ──
   zHopHeight: number;            // mm — nozzle lifts over path crossings (0 = off)
+  hopRadius: number;             // mm — arc spread on each side of a crossing
 
   // ── Concentric skirt travel ──
   skirtThreshold: number;        // mm — straight-line travel above this gets rerouted as a concentric arc
