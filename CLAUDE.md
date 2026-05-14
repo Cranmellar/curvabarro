@@ -84,11 +84,11 @@ Regeneration in `App.tsx` is split into two effects: wave layers re-run immediat
 ```
 src/
   main.tsx                  React root, StrictMode
-  App.tsx                   Master state + layout (≈507 lines)
-  index.css                 All styles (≈1086 lines, design tokens in :root)
+  App.tsx                   Master state + layout (large file)
+  index.css                 All styles (design tokens in :root)
   types/index.ts            All shared types
   components/
-    Preview2D.tsx           3D ortho canvas + timeline + kf editor (≈892 lines, LARGEST)
+    Preview2D.tsx           3D ortho canvas + timeline + kf editor (largest file, >1000 lines)
     LissajousParams.tsx     Right panel: wave sliders + presets
     LissajousPreview.tsx    Bottom center: animated Lissajous canvas
     PathParams.tsx          Left panel: layers, speeds, options
@@ -100,7 +100,7 @@ src/
   lib/
     svgParser.ts            DOM-based SVG sampling
     waveGenerator.ts        Lissajous math + keyframe interp + scale
-    gcodeGenerator.ts       G-code assembly (≈327 lines)
+    gcodeGenerator.ts       G-code assembly
     hopUtils.ts             Z-hop crossing detection
     skirtUtils.ts           Concentric arc travel math
 ```
@@ -109,7 +109,7 @@ src/
 
 ## State and types
 
-`PrintParams` is a single **flat** object with ≈50 fields covering sampling, Lissajous wave, layers, soft-join, SVG→mm transform, shape transform, z-hop, travel, speeds, extrusion, path options, and clay-specific behaviour. **Do not nest it, do not split it into multiple stores.**
+`PrintParams` is a single **flat** object with 55 fields covering sampling, Lissajous wave, layers, soft-join, SVG→mm transform, shape transform, z-hop, travel, speeds, extrusion, path options, and clay-specific behaviour. **Do not nest it, do not split it into multiple stores.**
 
 Keyframes (`WaveKeyframe[]`) override Lissajous fields at given `t ∈ [0,1]`. Between keyframes, all fields are linearly interpolated (`wlN/wlT` floor-clamped at 0.1). When `keyframes.length > 0`, the per-path overrides (`ampNOverride` etc. on `SampledPath`) are **silently ignored by `waveGenerator`** — the UI disables them in this case (see `PathList.tsx`).
 
@@ -118,6 +118,7 @@ Keyframes (`WaveKeyframe[]`) override Lissajous fields at given `t ∈ [0,1]`. B
 - `parsedSVG: ParsedSVG | null` — sampled SVG
 - `layers: WaveLayer[]` — output of `generateWaveLayers`
 - `gcode: string` — output of `generateGcode`
+- `error: string | null` — SVG parse error shown in the UI
 - `keyframes: WaveKeyframe[]`
 - `timelineProgress: number ∈ [0,1]` — scrubber on `Preview2D`
 - `gcodeFilename: string` — derived from uploaded SVG filename
@@ -158,10 +159,10 @@ Keyframes (`WaveKeyframe[]`) override Lissajous fields at given `t ∈ [0,1]`. B
 
 These are documented hazards. Fix them when you touch the area, but don't go on cleanup sweeps without being asked.
 
-- **`Preview2D.tsx` is ≈892 lines** and overdue for a split. The canvas draw code is the obvious extraction (→ `lib/draw3D.ts`). Don't refactor it preemptively; do it when adding a feature that would otherwise inflate the file further.
+- **`Preview2D.tsx` is >1000 lines** and overdue for a split. The canvas draw code is the obvious extraction (→ `lib/draw3D.ts`). Don't refactor it preemptively; do it when adding a feature that would otherwise inflate the file further.
 - **`ParsedSVG.raw` duplicates `App.tsx`'s `lastRawRef.current.raw`.** Either could be removed.
-- **`resampleSVG` in `lib/svgParser.ts`** is dead code.
-- **Z-hop is silently skipped for layer arc paths > 600 points** (`hopUtils.ts` MAX_PTS). No user-facing warning.
+- **`resampleSVG` in `lib/svgParser.ts`** is exported but dead — never imported anywhere.
+- **Z-hop crossing detection logs a `console.warn` for paths > 3000 points** (`WARN_PTS` in `hopUtils.ts`) but does not skip — it will just be slow for very dense paths.
 - **`CenterPad`'s drag has no window-level handler** — drag stops abruptly at the 56×56 canvas boundary on fast moves.
 - **`skirtThreshold` lives under the "Velocidades" UI section** in `PathParams.tsx` but conceptually belongs with travel options.
 
@@ -192,7 +193,7 @@ This is the most subtle area. Before changing `lib/gcodeGenerator.ts`:
 
 - Design tokens in `:root` at the top of `src/index.css`. Use them; don't hardcode colours.
 - Smallest text size is **9px**. Don't go below.
-- `--muted` is `#6A6762`. `--accent` is `#4F46E5` (indigo). The art direction is "Swiss warm-paper" — restrained, off-white background, single accent.
+- `--muted` is `#6A6590`. `--accent` is `#4F46E5` (indigo). The art direction is "Swiss warm-paper" — restrained, off-white background, single accent.
 - Sliders apply a dynamic `linear-gradient` fill inline (see `LissajousParams.Slider`). Keep this pattern when adding new sliders.
 - `body.dragging-h` / `body.dragging-v` are added during resize drags to override the cursor globally.
 
